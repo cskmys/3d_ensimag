@@ -79,7 +79,7 @@ class SimpleTriangle:
         GL.glBindVertexArray(0)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
 
-    def draw(self, projection, view, model):
+    def draw(self, projection, view, model, color):
         GL.glUseProgram(self.shader.glid)
 
         # draw triangle as GL_TRIANGLE vertex array, draw array call
@@ -88,7 +88,7 @@ class SimpleTriangle:
         GL.glBindVertexArray(0)
 
         my_color_location = GL.glGetUniformLocation(self.shader.glid, 'color')
-        GL.glUniform3fv(my_color_location, 1, (0.6, 0.6, 0.9))
+        GL.glUniform3fv(my_color_location, 1, color)
 
     def __del__(self):
         GL.glDeleteVertexArrays(1, [self.glid])
@@ -99,8 +99,8 @@ class SimpleTriangle:
 class Viewer:
     """ GLFW viewer window, with classic initialization & graphics loop """
 
-    def __init__(self, width=640, height=480):
-
+    def __init__(self, width=640, height=480, color=(1, 1, 1)):
+        self.color = color
         # version hints: create GL window with >= OpenGL 3.3 and core profile
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
@@ -134,7 +134,7 @@ class Viewer:
 
             # draw our scene objects
             for drawable in self.drawables:
-                drawable.draw(None, None, None)
+                drawable.draw(None, None, None, self.color)
 
             # flush render commands, and swap draw buffers
             glfw.swap_buffers(self.win)
@@ -151,6 +151,28 @@ class Viewer:
         if action == glfw.PRESS or action == glfw.REPEAT:
             if key == glfw.KEY_ESCAPE or key == glfw.KEY_Q:
                 glfw.set_window_should_close(self.win, True)
+            else:
+                col = list(self.color)
+                if key == glfw.KEY_KP_7:
+                    col[0] = col[0] + 0.1
+                elif key == glfw.KEY_KP_8:
+                    col[1] = col[1] + 0.1
+                elif key == glfw.KEY_KP_9:
+                    col[2] = col[2] + 0.1
+                elif key == glfw.KEY_KP_1:
+                    col[0] = col[0] - 0.1
+                elif key == glfw.KEY_KP_2:
+                    col[1] = col[1] - 0.1
+                elif key == glfw.KEY_KP_3:
+                    col[2] = col[2] - 0.1
+
+                for i in range(3):
+                    if col[i] > 1.0:
+                        col[i] = 1.0
+                    elif col[i] < 0.0:
+                        col[i] = 0.0
+
+                self.color = tuple(col)
 
             for drawable in self.drawables:
                 if hasattr(drawable, 'key_handler'):
