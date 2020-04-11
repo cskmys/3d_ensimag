@@ -99,7 +99,7 @@ class SimpleTriangle:
 class Viewer:
     """ GLFW viewer window, with classic initialization & graphics loop """
 
-    def __init__(self, width=640, height=480, color=(1, 1, 1)):
+    def __init__(self, width=640, height=480, color=(0, 0, 0)):
         self.color = color
         # version hints: create GL window with >= OpenGL 3.3 and core profile
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
