@@ -62,22 +62,32 @@ class SimpleTriangle:
     def __init__(self, shader):
         self.shader = shader
 
-        # triangle position buffer
-        position = np.array(((0, .5, 0), (.5, -.5, 0), (-.5, -.5, 0)), 'f')
-
         self.glid = GL.glGenVertexArrays(1)  # create OpenGL vertex array id
         GL.glBindVertexArray(self.glid)      # activate to receive state below
-        self.buffers = [GL.glGenBuffers(1)]  # create buffer for position attrib
+        self.buffers = GL.glGenBuffers(2)  # create buffer for position attrib
 
+        # triangle position buffer
+        position = np.array(((0, .5, 0), (.5, -.5, 0), (-.5, -.5, 0)), 'f')
         # bind the vbo, upload position data to GPU, declare its size and type
         GL.glEnableVertexAttribArray(0)      # assign to layout = 0 attribute
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[0])
         GL.glBufferData(GL.GL_ARRAY_BUFFER, position, GL.GL_STATIC_DRAW)
         GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 0, None)
 
+        # triangle color buffer
+        color = np.array(((1, 0, 0), (0, 1, 0), (0, 0, 1)), 'f')
+        # bind the vbo, upload position data to GPU, declare its size and type
+        GL.glEnableVertexAttribArray(1)  # assign to layout = 1 attribute
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[1])
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, color, GL.GL_STATIC_DRAW)
+        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 0, None)
+
         # cleanup and unbind so no accidental subsequent state update
         GL.glBindVertexArray(0)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+
+        GL.glBindVertexArray(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 1)
 
     def draw(self, projection, view, model, color):
         GL.glUseProgram(self.shader.glid)
@@ -87,12 +97,12 @@ class SimpleTriangle:
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
         GL.glBindVertexArray(0)
 
-        my_color_location = GL.glGetUniformLocation(self.shader.glid, 'color')
+        my_color_location = GL.glGetUniformLocation(self.shader.glid, 'dynamic_color')
         GL.glUniform3fv(my_color_location, 1, color)
 
     def __del__(self):
-        GL.glDeleteVertexArrays(1, [self.glid])
-        GL.glDeleteBuffers(1, self.buffers)
+        GL.glDeleteVertexArrays(2, [self.glid])
+        GL.glDeleteBuffers(2, self.buffers)
 
 
 # ------------  Viewer class & window management ------------------------------

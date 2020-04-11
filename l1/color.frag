@@ -1,8 +1,8 @@
 #version 330 core
 
-uniform vec3 color;
-out vec4 outColor;
+uniform vec3 dynamic_color;
 in vec3 col;
+out vec4 outColor;
 
 vec3 chk_range(vec3 c){
     vec3 r;
@@ -19,5 +19,5 @@ vec3 chk_range(vec3 c){
 }
 
 void main() {
-    outColor = vec4(chk_range(col + color), 1);
+    outColor = vec4(chk_range(col + dynamic_color), 1);
 }
