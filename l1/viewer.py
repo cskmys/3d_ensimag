@@ -87,6 +87,9 @@ class SimpleTriangle:
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
         GL.glBindVertexArray(0)
 
+        my_color_location = GL.glGetUniformLocation(self.shader.glid, 'color')
+        GL.glUniform3fv(my_color_location, 1, (0.6, 0.6, 0.9))
+
     def __del__(self):
         GL.glDeleteVertexArrays(1, [self.glid])
         GL.glDeleteBuffers(1, self.buffers)
