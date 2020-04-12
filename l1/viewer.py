@@ -90,7 +90,14 @@ class SimpleTriangle:
         GL.glBindVertexArray(1)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 1)
 
-    def draw(self, projection, view, model, color, rot_info, scale_val):
+    def get_transform_matrix(self, rotation, scaling, translation):
+        rot_info = list(rotation)
+        rot_axis = vec(rot_info[0:3])
+        rot_deg = rot_info[3]
+        transform_mat = scale(scaling) @ rotate(rot_axis, rot_deg) @ translate(translation)
+        return transform_mat
+
+    def draw(self, projection, view, model, color, rotation, scaling, translation):
         GL.glUseProgram(self.shader.glid)
 
         # draw triangle as GL_TRIANGLE vertex array, draw array call
@@ -102,7 +109,7 @@ class SimpleTriangle:
         GL.glUniform3fv(color_loc, 1, color)
 
         rot_mat_loc = GL.glGetUniformLocation(self.shader.glid, 'transform_mat')
-        GL.glUniformMatrix4fv(rot_mat_loc, 1, True, scale(scale_val) @ rotate(vec(rot_info[0:3]), rot_info[3]))
+        GL.glUniformMatrix4fv(rot_mat_loc, 1, True, self.get_transform_matrix(rotation, scaling, translation))
 
     def __del__(self):
         GL.glDeleteVertexArrays(2, [self.glid])
@@ -113,10 +120,11 @@ class SimpleTriangle:
 class Viewer:
     """ GLFW viewer window, with classic initialization & graphics loop """
 
-    def __init__(self, width=640, height=480, color=(0, 0, 0), rot_info=(0, 1, 0, 45), scale=2):
+    def __init__(self, width=640, height=480, color=(0, 0, 0), rotation=(0, 1, 0, 45), scale=2, translation=(0, 0.1, 0.1)):
         self.color = color
-        self.rot_info = list(rot_info)
+        self.rotation = rotation
         self.scale = scale
+        self.translation = translation
         # version hints: create GL window with >= OpenGL 3.3 and core profile
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
@@ -150,7 +158,7 @@ class Viewer:
 
             # draw our scene objects
             for drawable in self.drawables:
-                drawable.draw(None, None, None, self.color, self.rot_info, self.scale)
+                drawable.draw(None, None, None, self.color, self.rotation, self.scale, self.translation)
 
             # flush render commands, and swap draw buffers
             glfw.swap_buffers(self.win)
