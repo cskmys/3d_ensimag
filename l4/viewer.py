@@ -13,7 +13,7 @@ import glfw  # lean window system wrapper for OpenGL
 import numpy as np  # all matrix manipulations & OpenGL args
 import assimpcy  # 3D resource loader
 
-from transform import Trackball, identity, vec, translate, rotate, scale
+from transform import Trackball, identity, rotate, vec
 
 
 # ------------ low level OpenGL object wrappers ----------------------------
@@ -121,9 +121,8 @@ class Node:
 
     def draw(self, projection, view, model):
         """ Recursive draw, passing down updated model matrix. """
-        new_model = model @ self.transform
         for child in self.children:
-            child.draw(projection, view, new_model)
+            child.draw(projection, view, model @ self.transform)
 
     def key_handler(self, key):
         """ Dispatch keyboard events to children """
@@ -132,6 +131,7 @@ class Node:
                 child.key_handler(key)
 
 
+# -------------- Phong rendered Mesh class -----------------------------------
 # mesh to refactor all previous classes
 class Mesh:
 
@@ -152,53 +152,44 @@ class Mesh:
         self.vertex_array.execute(primitives)
 
 
-class Axis(Mesh):
-    """ Axis object useful for debugging coordinate frames """
+class PhongMesh(Mesh):
+    """ Mesh with Phong illumination """
 
-    def __init__(self, shader):
-        pos = ((0, 0, 0), (1, 0, 0), (0, 0, 0), (0, 1, 0), (0, 0, 0), (0, 0, 1))
-        col = ((1, 0, 0), (1, 0, 0), (0, 1, 0), (0, 1, 0), (0, 0, 1), (0, 0, 1))
-        super().__init__(shader, [pos, col])
+    def __init__(self, shader, attributes, index=None,
+                 light_dir=(0, -1, 0),  # directional light (in world coords)
+                 k_a=(0, 0, 0), k_d=(1, 1, 0), k_s=(1, 1, 1), s=16.):
+        super().__init__(shader, attributes, index)
+        self.light_dir = light_dir
+        self.k_a, self.k_d, self.k_s, self.s = k_a, k_d, k_s, s
 
-    def draw(self, projection, view, model, primitives=GL.GL_LINES):
-        model = scale(5)
+        # retrieve OpenGL locations of shader variables at initialization
+        names = ['light_dir', 'k_a', 's', 'k_s', 'k_d', 'w_camera_position']
+
+        loc = {n: GL.glGetUniformLocation(shader.glid, n) for n in names}
+        self.loc.update(loc)
+
+    def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
+        GL.glUseProgram(self.shader.glid)
+
+        # setup light parameters
+        GL.glUniform3fv(self.loc['light_dir'], 1, self.light_dir)
+
+        # setup material parameters
+        GL.glUniform3fv(self.loc['k_a'], 1, self.k_a)
+        GL.glUniform3fv(self.loc['k_d'], 1, self.k_d)
+        GL.glUniform3fv(self.loc['k_s'], 1, self.k_s)
+        GL.glUniform1f(self.loc['s'], max(self.s, 0.001))
+
+        # world camera position for Phong illumination specular component
+        w_camera_position = np.linalg.inv(view)[:, 3]
+        GL.glUniform3fv(self.loc['w_camera_position'], 1, w_camera_position)
+
         super().draw(projection, view, model, primitives)
 
 
-class RotationControlNode(Node):
-    def __init__(self, key_up, key_down, axis, angle=0):
-        super().__init__()
-        self.angle, self.axis = angle, axis
-        self.key_up, self.key_down = key_up, key_down
-
-    def key_handler(self, key):
-        self.angle += 5 * int(key == self.key_up)
-        self.angle -= 5 * int(key == self.key_down)
-        self.transform = rotate(self.axis, self.angle)
-        super().key_handler(key)
-
-class SimpleTriangle(Mesh):
-    """Hello triangle object"""
-
-    def __init__(self, shader):
-        # triangle position buffer
-        position = np.array(((0, .5, 0), (.5, -.5, 0), (-.5, -.5, 0)), 'f')
-        color = np.array(((1, 0, 0), (0, 1, 0), (0, 0, 1)), 'f')
-
-        super().__init__(shader, [position, color])
-
-
-class Cylinder(Node):
-    """ Very simple cylinder based on practical 2 load function """
-
-    def __init__(self, shader):
-        super().__init__()
-        self.add(*load('cylinder.obj', shader))  # just load cylinder from file
-
-
 # -------------- 3D resource loader -----------------------------------------
-def load(file, shader):
-    """ load resources from file using assimpcy, return list of ColorMesh """
+def load_phong_mesh(file, shader, light_dir):
+    """ load resources from file using assimp, return list of ColorMesh """
     try:
         pp = assimpcy.aiPostProcessSteps
         flags = pp.aiProcess_Triangulate | pp.aiProcess_GenSmoothNormals
@@ -207,8 +198,18 @@ def load(file, shader):
         print('ERROR loading', file + ': ', exception.args[0].decode())
         return []
 
-    meshes = [Mesh(shader, [m.mVertices, m.mNormals], m.mFaces)
-              for m in scene.mMeshes]
+    # prepare mesh nodes
+    meshes = []
+    for mesh in scene.mMeshes:
+        mat = scene.mMaterials[mesh.mMaterialIndex].properties
+        mesh = PhongMesh(shader, [mesh.mVertices, mesh.mNormals], mesh.mFaces,
+                         k_d=mat.get('COLOR_DIFFUSE', (1, 1, 1)),
+                         k_s=mat.get('COLOR_SPECULAR', (1, 1, 1)),
+                         k_a=mat.get('COLOR_AMBIENT', (0, 0, 0)),
+                         s=mat.get('SHININESS', 16.),
+                         light_dir=light_dir)
+        meshes.append(mesh)
+
     size = sum((mesh.mNumFaces for mesh in scene.mMeshes))
     print('Loaded %s\t(%d meshes, %d faces)' % (file, len(meshes), size))
     return meshes
@@ -309,87 +310,20 @@ class Viewer(Node):
 def main():
     """ create a window, add scene objects, then run rendering loop """
     viewer = Viewer()
+    shader = Shader("phong.vert", "phong.frag")
 
-    # default color shader
-    shader = Shader("color.vert", "color.frag")
+    node = Node(transform=rotate((0, 0, 1), 45))
+    viewer.add(node)
 
-    # place instances of our basic objects
-    # viewer.add(*[mesh for file in sys.argv[1:] for mesh in load(file, shader)])
-    # if len(sys.argv) < 2:
+    light_dir = (0, -1, 0)
+    # node.add(*[mesh for file in sys.argv[1:]
+    #            for mesh in load_phong_mesh(file, shader, light_dir)])
+    #
+    # if len(sys.argv) != 2:
     #     print('Usage:\n\t%s [3dfile]*\n\n3dfile\t\t the filename of a model in'
     #           ' format supported by assimp.' % (sys.argv[0],))
-    # viewer.add(mesh for mesh in load('cylinder.obj', shader))
 
-    # Independent
-    # cylinder = Cylinder(shader)
-    #
-    # base_shape = Node(transform=scale(1, 0.5, 1))
-    # base_shape.add(cylinder)
-    #
-    # arm_shape = Node(transform=translate(0, 3, 0) @ scale(0.3, 3, 0.3))
-    # arm_shape.add(cylinder)
-    #
-    # forearm_shape = Node(transform=translate(0, 7.5, 0) @ scale(0.1, 2.5, 0.1))
-    # forearm_shape.add(cylinder)
-    # viewer.add(base_shape, arm_shape, forearm_shape)
-
-    # hierarchical linking
-    # theta = 45.0        # base horizontal rotation angle
-    # phi1 = 45.0         # arm angle
-    # phi2 = 20.0         # forearm angle
-    #
-    # cylinder = Cylinder(shader)
-    #
-    # base_shape = Node(transform=scale(1, 0.5, 1))
-    # base_shape.add(cylinder)
-    #
-    # arm_shape = Node(transform=translate(0, 3, 0) @ scale(0.3, 3, 0.3))
-    # arm_shape.add(cylinder)
-    #
-    # forearm_shape = Node(transform=translate(0, 7.5, 0) @ scale(0.1, 2.5, 0.1))
-    # forearm_shape.add(cylinder)
-    #
-    # forearm_transform = Node()
-    # forearm_transform.add(forearm_shape)
-    #
-    # arm_transform = Node()
-    # arm_transform.add(arm_shape, forearm_transform)
-    #
-    # base_transform = Node(transform=rotate((0,0,1.0), 90))
-    # base_transform.add(base_shape, arm_transform)
-    # viewer.add(base_transform)
-
-    axis = Axis(shader)
-    rot_ctl_node = RotationControlNode(glfw.KEY_LEFT, glfw.KEY_RIGHT, vec(0, 1, 0))
-
-    theta = 45.0        # base horizontal rotation angle
-    phi1 = 45.0         # arm angle
-    phi2 = 20.0         # forearm angle
-
-    cylinder = Cylinder(shader)
-
-    base_shape = Node(transform=scale(1, 0.5, 1))
-    base_shape.add(cylinder)
-
-    arm_shape = Node(transform=translate(0, 3, 0) @ scale(0.3, 3, 0.3))
-    arm_shape.add(cylinder)
-
-    forearm_shape = Node(transform=translate(0, 7.5, 0) @ scale(0.1, 2.5, 0.1))
-    forearm_shape.add(cylinder)
-
-    forearm_transform = Node(transform=translate(1, 1, 1) @ rotate((1.0, 0.0, 0.0), phi2))
-    forearm_transform.add(forearm_shape)
-    # forearm_transform.add(forearm_shape, axis)
-
-    arm_transform = Node(transform=translate(0, 0, -0.5) @ rotate((1.0, 0.0, 0.0), phi1))
-    arm_transform.add(arm_shape, forearm_transform)
-    arm_transform.add(arm_shape, axis)
-
-    base_transform = Node(transform=translate(0, 0, 0) @ rotate((1.0, 0.0, 0.0), theta))
-    base_transform.add(base_shape, arm_transform)
-    base_transform.add(base_shape, rot_ctl_node)
-
-    viewer.add(base_transform)
+    node.add(*[mesh for mesh in load_phong_mesh('suzzane.obj', shader, light_dir)])
     # start rendering loop
     viewer.run()
 
