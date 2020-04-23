@@ -63,6 +63,53 @@ vertices = np.array(((0.5, 0.5, 0.0), (1.0, 0.0, 0.0),
 
 indices = np.array((0, 1, 3, 1, 2, 3), np.uint32)
 
+positions = np.array(((0.5, 0.5, 0.0), (1.0, 0.0, 0.0),  # 0
+                          (0.5, -0.5, 0.0), (1.0, 0.0, 0.0),  # 1
+                          (-0.5, 0.5, 0.0), (1.0, 0.0, 0.0),  # 3
+                          (0.5, -0.5, 0.0), (0.0, 1.0, 0.0),  # 1
+                          (-0.5, -0.5, 0.0), (0.0, 1.0, 0.0),  # 2
+                          (-0.5, 0.5, 0.0), (0.0, 1.0, 0.0)),  # 3
+                         'f')
+
+
+class SimpleSolidRectangle:
+    """Hello triangle object"""
+
+    def __init__(self, shader):
+        self.shader = shader
+
+        GL.glUseProgram(shader.glid)
+
+        self.vao = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.vao)
+        self.vbo = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.vbo)
+
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, positions, GL.GL_STATIC_DRAW)
+
+        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 6 * np.dtype(np.float32).itemsize, ctypes.c_void_p(0 * np.dtype(np.float32).itemsize))
+        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 6 * np.dtype(np.float32).itemsize, ctypes.c_void_p(3 * np.dtype(np.float32).itemsize))
+        GL.glEnableVertexAttribArray(0)
+        GL.glEnableVertexAttribArray(1)
+
+        # cleanup and unbind so no accidental subsequent state update
+        GL.glBindVertexArray(0)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+
+    def draw(self, projection, view, model):
+        GL.glUseProgram(self.shader.glid)
+
+        GL.glBindVertexArray(self.vao)
+
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
+
+        GL.glBindVertexArray(0)
+
+    def __del__(self):
+        GL.glDeleteVertexArrays(1, self.vao)
+        GL.glDeleteBuffers(1, self.vbo)
+
+
 class SimpleRectangle:
     """Hello triangle object"""
 
@@ -89,6 +136,7 @@ class SimpleRectangle:
         # cleanup and unbind so no accidental subsequent state update
         GL.glBindVertexArray(0)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, 0)
 
     def draw(self, projection, view, model):
         GL.glUseProgram(self.shader.glid)
@@ -176,12 +224,11 @@ class Viewer:
 def main():
     """ create window, add shaders & scene objects, then run rendering loop """
     viewer = Viewer()
-    color_shader = Shader("color.vert", "color_int.frag")
+    color_shader = Shader("color.vert", "color.frag")
 
-    # place instances of our basic objects
-    viewer.add(SimpleRectangle(color_shader))
+    # viewer.add(SimpleRectangle(color_shader))
+    viewer.add(SimpleSolidRectangle(color_shader))
 
-    # start rendering loop
     viewer.run()
 
 
