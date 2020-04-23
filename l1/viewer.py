@@ -9,8 +9,8 @@ import os                           # os function, i.e. checking file status
 import OpenGL.GL as GL              # standard Python OpenGL wrapper
 import glfw                         # lean window system wrapper for OpenGL
 import numpy as np                  # all matrix manipulations & OpenGL args
+import ctypes
 
-from transform import translate, rotate, scale, vec
 
 # ------------ low level OpenGL object wrappers ----------------------------
 class Shader:
@@ -56,96 +56,88 @@ class Shader:
             GL.glDeleteProgram(self.glid)  # object dies => destroy GL object
 
 
-# ------------  Scene object classes ------------------------------------------
-class SimpleTriangle:
+vertices = np.array(((0.5, 0.5, 0.0), (1.0, 0.0, 0.0),
+                    (0.5, -0.5, 0.0), (0.0, 1.0, 0.0),
+                    (-0.5, -0.5, 0.0), (0.0, 0.0, 1.0),
+                    (-0.5,  0.5, 0.0), (1.0,  0.0, 0.0)), 'f')
+
+indices = np.array((0, 1, 3, 1, 2, 3), np.uint32)
+
+class SimpleRectangle:
     """Hello triangle object"""
 
     def __init__(self, shader):
         self.shader = shader
 
-        self.glid = GL.glGenVertexArrays(1)  # create OpenGL vertex array id
-        GL.glBindVertexArray(self.glid)      # activate to receive state below
-        self.buffers = GL.glGenBuffers(2)  # create buffer for position attrib
+        GL.glUseProgram(shader.glid)
 
-        # triangle position buffer
-        position = np.array(((0, .5, 0), (.5, -.5, 0), (-.5, -.5, 0)), 'f')
-        # bind the vbo, upload position data to GPU, declare its size and type
-        GL.glEnableVertexAttribArray(0)      # assign to layout = 0 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[0])
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, position, GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 0, None)
+        self.vao = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.vao)
+        self.vbo = GL.glGenBuffers(1)
+        self.ebo = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.vbo)
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.ebo)
 
-        # triangle color buffer
-        color = np.array(((1, 0, 0), (0, 1, 0), (0, 0, 1)), 'f')
-        # bind the vbo, upload position data to GPU, declare its size and type
-        GL.glEnableVertexAttribArray(1)  # assign to layout = 1 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[1])
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, color, GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 0, None)
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, vertices, GL.GL_STATIC_DRAW)
+        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, indices, GL.GL_STATIC_DRAW)
+
+        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 6 * np.dtype(np.float32).itemsize, ctypes.c_void_p(0 * np.dtype(np.float32).itemsize))
+        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 6 * np.dtype(np.float32).itemsize, ctypes.c_void_p(3 * np.dtype(np.float32).itemsize))
+        GL.glEnableVertexAttribArray(0)
+        GL.glEnableVertexAttribArray(1)
 
         # cleanup and unbind so no accidental subsequent state update
         GL.glBindVertexArray(0)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
 
-        GL.glBindVertexArray(1)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 1)
-
-    def get_transform_matrix(self, rotation, scaling, translation):
-        rot_info = list(rotation)
-        rot_axis = vec(rot_info[0:3])
-        rot_deg = rot_info[3]
-        transform_mat = scale(scaling) @ rotate(rot_axis, rot_deg) @ translate(translation)
-        return transform_mat
-
-    def draw(self, projection, view, model, color, rotation, scaling, translation):
+    def draw(self, projection, view, model):
         GL.glUseProgram(self.shader.glid)
 
-        # draw triangle as GL_TRIANGLE vertex array, draw array call
-        GL.glBindVertexArray(self.glid)
-        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+        GL.glBindVertexArray(self.vao)
+
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.ebo)
+        GL.glDrawElements(GL.GL_TRIANGLES, indices.size, GL.GL_UNSIGNED_INT, None)
+
         GL.glBindVertexArray(0)
 
-        color_loc = GL.glGetUniformLocation(self.shader.glid, 'dynamic_color')
-        GL.glUniform3fv(color_loc, 1, color)
-
-        rot_mat_loc = GL.glGetUniformLocation(self.shader.glid, 'transform_mat')
-        GL.glUniformMatrix4fv(rot_mat_loc, 1, True, self.get_transform_matrix(rotation, scaling, translation))
-
     def __del__(self):
-        GL.glDeleteVertexArrays(2, [self.glid])
-        GL.glDeleteBuffers(2, self.buffers)
+        GL.glDeleteVertexArrays(1, self.vao)
+        GL.glDeleteBuffers(1, self.vbo)
+        GL.glDeleteBuffers(1, self.ebo)
 
 
 # ------------  Viewer class & window management ------------------------------
 class Viewer:
     """ GLFW viewer window, with classic initialization & graphics loop """
 
-    def __init__(self, width=640, height=480, color=(0, 0, 0), rotation=(0, 1, 0, 45), scale=2, translation=(0, 0.1, 0.1)):
-        self.color = color
-        self.rotation = rotation
-        self.scale = scale
-        self.translation = translation
+    def __init__(self, width=640, height=480):
+
         # version hints: create GL window with >= OpenGL 3.3 and core profile
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
-        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL.GL_TRUE)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        glfw.window_hint(glfw.RESIZABLE, False)
+
         self.win = glfw.create_window(width, height, 'Viewer', None, None)
+        if self.win is None:
+            print("Failed to create GLFW window")
+            glfw.terminate()
+            exit(-1)
 
         # make win's OpenGL context current; no OpenGL calls can happen before
         glfw.make_context_current(self.win)
 
         # register event handlers
+        glfw.set_framebuffer_size_callback(self.win, self.framebuffer_size_callback)
         glfw.set_key_callback(self.win, self.on_key)
+
+        GL.glViewport(0, 0, width, height)
+        GL.glEnable(GL.GL_DEPTH_TEST)
+        # GL.glEnable(GL.GL_CULL_FACE) # uncomment at modeling stage
 
         # useful message to check OpenGL renderer characteristics
         print('OpenGL', GL.glGetString(GL.GL_VERSION).decode() + ', GLSL',
               GL.glGetString(GL.GL_SHADING_LANGUAGE_VERSION).decode() +
               ', Renderer', GL.glGetString(GL.GL_RENDERER).decode())
-
-        # initialize GL by setting viewport and default render characteristics
-        GL.glClearColor(0.1, 0.1, 0.1, 0.1)
 
         # initially empty list of object to draw
         self.drawables = []
@@ -153,17 +145,14 @@ class Viewer:
     def run(self):
         """ Main render loop for this OpenGL window """
         while not glfw.window_should_close(self.win):
-            # clear draw buffer
-            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
 
-            # draw our scene objects
+            GL.glClearColor(0.2, 0.3, 0.3, 1.0)
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+
             for drawable in self.drawables:
-                drawable.draw(None, None, None, self.color, self.rotation, self.scale, self.translation)
+                drawable.draw(None, None, None)
 
-            # flush render commands, and swap draw buffers
             glfw.swap_buffers(self.win)
-
-            # Poll for and process events
             glfw.poll_events()
 
     def add(self, *drawables):
@@ -175,42 +164,22 @@ class Viewer:
         if action == glfw.PRESS or action == glfw.REPEAT:
             if key == glfw.KEY_ESCAPE or key == glfw.KEY_Q:
                 glfw.set_window_should_close(self.win, True)
-            else:
-                col = list(self.color)
-                if key == glfw.KEY_KP_7:
-                    col[0] = col[0] + 0.1
-                elif key == glfw.KEY_KP_8:
-                    col[1] = col[1] + 0.1
-                elif key == glfw.KEY_KP_9:
-                    col[2] = col[2] + 0.1
-                elif key == glfw.KEY_KP_1:
-                    col[0] = col[0] - 0.1
-                elif key == glfw.KEY_KP_2:
-                    col[1] = col[1] - 0.1
-                elif key == glfw.KEY_KP_3:
-                    col[2] = col[2] - 0.1
-
-                for i in range(3):
-                    if col[i] > 1.0:
-                        col[i] = 1.0
-                    elif col[i] < 0.0:
-                        col[i] = 0.0
-
-                self.color = tuple(col)
 
             for drawable in self.drawables:
                 if hasattr(drawable, 'key_handler'):
                     drawable.key_handler(key)
 
+    def framebuffer_size_callback(self, _win, width, height):
+        GL.glViewport(0, 0, width, height)
 
 # -------------- main program and scene setup --------------------------------
 def main():
     """ create window, add shaders & scene objects, then run rendering loop """
     viewer = Viewer()
-    color_shader = Shader("color.vert", "color.frag")
+    color_shader = Shader("color.vert", "color_int.frag")
 
     # place instances of our basic objects
-    viewer.add(SimpleTriangle(color_shader))
+    viewer.add(SimpleRectangle(color_shader))
 
     # start rendering loop
     viewer.run()
