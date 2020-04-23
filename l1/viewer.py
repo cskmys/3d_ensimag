@@ -10,6 +10,7 @@ import OpenGL.GL as GL              # standard Python OpenGL wrapper
 import glfw                         # lean window system wrapper for OpenGL
 import numpy as np                  # all matrix manipulations & OpenGL args
 import assimpcy                     # 3D resource loader
+import transform as t
 
 
 # ------------ low level OpenGL object wrappers ----------------------------
@@ -108,9 +109,14 @@ class Mesh:
         GL.glUseProgram(self.shader.glid)
         self.vao = VertexArray(attributes, index)
 
-    def draw(self, projection, view, model):
+    def draw(self, projection=t.identity(), view=t.identity(), model=t.identity(), primitives=GL.GL_TRIANGLES):
         GL.glUseProgram(self.shader.glid)
-        self.vao.execute(GL.GL_TRIANGLES)
+
+        self.shader.setMat4('projection', projection)
+        self.shader.setMat4('view', view)
+        self.shader.setMat4('model', model)
+
+        self.vao.execute(primitives)
 
     def __del__(self):
         pass
@@ -134,10 +140,10 @@ class SimpleRectangle(Mesh):
 
     def __init__(self, shader):
         vertices = np.array(((0.5, 0.5, 0.0), (0.5, -0.5, 0.0), (-0.5, -0.5, 0.0), (-0.5, 0.5, 0.0)), 'f')
-        color = np.array(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)), 'f')
+        colors = np.array(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)), 'f')
         indices = np.array((0, 1, 3, 1, 2, 3), np.uint32)
 
-        super().__init__(shader, [vertices, color], indices)
+        super().__init__(shader, [vertices, colors], indices)
 
 
 # -------------- 3D resource loader -----------------------------------------
@@ -158,6 +164,30 @@ def load(file, shader):
     return meshes
 
 
+class GLFWCamera(t.Trackball):
+    """ Use in Viewer for interactive viewpoint control """
+
+    def __init__(self, win):
+        """ Init needs a GLFW window handler 'win' to register callbacks """
+        super().__init__()
+        self.mouse = (0, 0)
+        glfw.set_cursor_pos_callback(win, self.on_mouse_move)
+        glfw.set_scroll_callback(win, self.on_scroll)
+
+    def on_mouse_move(self, win, xpos, ypos):
+        """ Rotate on left-click & drag, pan on right-click & drag """
+        old = self.mouse
+        self.mouse = (xpos, glfw.get_window_size(win)[1] - ypos)
+        if glfw.get_mouse_button(win, glfw.MOUSE_BUTTON_LEFT):
+            self.drag(old, self.mouse, glfw.get_window_size(win))
+        if glfw.get_mouse_button(win, glfw.MOUSE_BUTTON_RIGHT):
+            self.pan(old, self.mouse)
+
+    def on_scroll(self, win, _deltax, deltay):
+        """ Scroll controls the camera distance to trackball center """
+        self.zoom(deltay, glfw.get_window_size(win)[1])
+
+
 # ------------  Viewer class & window management ------------------------------
 class Viewer:
     """ GLFW viewer window, with classic initialization & graphics loop """
@@ -170,6 +200,7 @@ class Viewer:
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 
         self.win = glfw.create_window(width, height, 'Viewer', None, None)
+        self.camera = GLFWCamera(self.win)
         if self.win is None:
             print("Failed to create GLFW window")
             glfw.terminate()
@@ -184,7 +215,7 @@ class Viewer:
 
         GL.glViewport(0, 0, width, height)
         GL.glEnable(GL.GL_DEPTH_TEST)
-        # GL.glEnable(GL.GL_CULL_FACE) # uncomment at modeling stage
+        GL.glEnable(GL.GL_CULL_FACE)
 
         # useful message to check OpenGL renderer characteristics
         print('OpenGL', GL.glGetString(GL.GL_VERSION).decode() + ', GLSL',
@@ -201,8 +232,13 @@ class Viewer:
             GL.glClearColor(0.2, 0.3, 0.3, 1.0)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
+            winsize = glfw.get_window_size(self.win)
+            view = self.camera.view_matrix()
+            projection = self.camera.projection_matrix(winsize)
+            model = t.scale(0.5)
+
             for drawable in self.drawables:
-                drawable.draw(None, None, None)
+                drawable.draw(projection, view, model)
 
             glfw.swap_buffers(self.win)
             glfw.poll_events()
