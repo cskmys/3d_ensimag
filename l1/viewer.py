@@ -9,7 +9,7 @@ import os                           # os function, i.e. checking file status
 import OpenGL.GL as GL              # standard Python OpenGL wrapper
 import glfw                         # lean window system wrapper for OpenGL
 import numpy as np                  # all matrix manipulations & OpenGL args
-import ctypes
+import assimpcy                     # 3D resource loader
 
 
 # ------------ low level OpenGL object wrappers ----------------------------
@@ -101,7 +101,22 @@ class VertexArray:
         GL.glDeleteBuffers(len(self.buffers), self.buffers)
 
 
-class SimpleSolidRectangle:
+class Mesh:
+    """ helper class to handle mesh. """
+    def __init__(self, shader, attributes, index=None):
+        self.shader = shader
+        GL.glUseProgram(self.shader.glid)
+        self.vao = VertexArray(attributes, index)
+
+    def draw(self, projection, view, model):
+        GL.glUseProgram(self.shader.glid)
+        self.vao.execute(GL.GL_TRIANGLES)
+
+    def __del__(self):
+        pass
+
+
+class SimpleSolidRectangle(Mesh):
     """Hello triangle object"""
 
     def __init__(self, shader):
@@ -110,42 +125,37 @@ class SimpleSolidRectangle:
 
         colors = np.array(((1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0),
                            (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0)), 'f')
-        self.shader = shader
 
-        GL.glUseProgram(shader.glid)
-        self.vao = VertexArray([positions, colors])
-
-    def draw(self, projection, view, model):
-        GL.glUseProgram(self.shader.glid)
-        self.vao.execute(GL.GL_TRIANGLES)
-
-    def __del__(self):
-        pass
+        super().__init__(shader, [positions, colors])
 
 
-vertices = np.array(((0.5, 0.5, 0.0), (0.5, -0.5, 0.0), (-0.5, -0.5, 0.0), (-0.5, 0.5, 0.0)), 'f')
-color = np.array(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)), 'f')
-indices = np.array((0, 1, 3, 1, 2, 3), np.uint32)
-
-
-class SimpleRectangle:
+class SimpleRectangle(Mesh):
     """Hello triangle object"""
 
     def __init__(self, shader):
+        vertices = np.array(((0.5, 0.5, 0.0), (0.5, -0.5, 0.0), (-0.5, -0.5, 0.0), (-0.5, 0.5, 0.0)), 'f')
+        color = np.array(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)), 'f')
+        indices = np.array((0, 1, 3, 1, 2, 3), np.uint32)
 
-        self.shader = shader
+        super().__init__(shader, [vertices, color], indices)
 
-        GL.glUseProgram(self.shader.glid)
 
-        self.vao = VertexArray([vertices, color], indices)
+# -------------- 3D resource loader -----------------------------------------
+def load(file, shader):
+    """ load resources from file using assimp, return list of Mesh """
+    try:
+        pp = assimpcy.aiPostProcessSteps
+        flags = pp.aiProcess_Triangulate | pp.aiProcess_GenSmoothNormals
+        scene = assimpcy.aiImportFile(file, flags)
+    except assimpcy.all.AssimpError as exception:
+        print('ERROR loading', file + ': ', exception.args[0].decode())
+        return []
 
-    def draw(self, projection, view, model):
-        GL.glUseProgram(self.shader.glid)
-
-        self.vao.execute(GL.GL_TRIANGLES)
-
-    def __del__(self):
-        pass
+    meshes = [Mesh(shader, [m.mVertices, m.mNormals], m.mFaces)
+              for m in scene.mMeshes]
+    size = sum((mesh.mNumFaces for mesh in scene.mMeshes))
+    print('Loaded %s\t(%d meshes, %d faces)' % (file, len(meshes), size))
+    return meshes
 
 
 # ------------  Viewer class & window management ------------------------------
@@ -221,8 +231,11 @@ def main():
     viewer = Viewer()
     color_shader = Shader("color.vert", "color.frag")
 
-    # viewer.add(SimpleRectangle(color_shader))
-    viewer.add(SimpleSolidRectangle(color_shader))
+    # meshes = [SimpleRectangle(color_shader)]
+    # meshes = [SimpleSolidRectangle(color_shader)]
+    meshes = load('suzzane.obj', color_shader)
+    for mesh in meshes:
+        viewer.add(mesh)
 
     viewer.run()
 
