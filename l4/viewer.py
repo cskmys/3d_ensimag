@@ -13,7 +13,7 @@ import glfw  # lean window system wrapper for OpenGL
 import numpy as np  # all matrix manipulations & OpenGL args
 import assimpcy  # 3D resource loader
 
-from transform import Trackball, identity, rotate, vec
+from transform import Trackball, identity, rotate, translate, scale, vec
 
 
 # ------------ low level OpenGL object wrappers ----------------------------
@@ -171,6 +171,7 @@ class PhongMesh(Mesh):
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
         GL.glUseProgram(self.shader.glid)
 
+        self.light_dir = [np.sin(glfw.get_time() * val) for val in [2.0, 0.7, 1.3]]
         # setup light parameters
         GL.glUniform3fv(self.loc['light_dir'], 1, self.light_dir)
 
@@ -306,14 +307,18 @@ class Viewer(Node):
             self.key_handler(key)
 
 
+class Suzy(Node):
+    def __init__(self, shader, light_dir):
+        super().__init__()
+        self.add(*[mesh for mesh in load_phong_mesh('suzzane.obj', shader, light_dir)])
+
+
 # -------------- main program and scene setup --------------------------------
 def main():
     """ create a window, add scene objects, then run rendering loop """
     viewer = Viewer()
     shader = Shader("phong.vert", "phong.frag")
 
-    node = Node(transform=rotate((0, 0, 1), 45))
-    viewer.add(node)
 
     light_dir = (0, -1, 0)
     # node.add(*[mesh for file in sys.argv[1:]
@@ -322,8 +327,37 @@ def main():
     # if len(sys.argv) != 2:
     #     print('Usage:\n\t%s [3dfile]*\n\n3dfile\t\t the filename of a model in'
     #           ' format supported by assimp.' % (sys.argv[0],))
+    suz = Suzy(shader, light_dir)
 
-    node.add(*[mesh for mesh in load_phong_mesh('suzzane.obj', shader, light_dir)])
+    # mother_shape = Node(transform=translate(-2, 0, 0) @ scale(0.7))
+    # mother_shape.add(suz)
+    #
+    # daughter_shape = Node(transform=translate(0, 0, 0) @ scale(0.5))
+    # daughter_shape.add(suz)
+    #
+    # toy_shape = Node(transform=translate(1, 0, 0) @ scale(0.25))
+    # toy_shape.add(suz)
+    #
+    # viewer.add(mother_shape, daughter_shape, toy_shape)
+
+    mother_shape = Node(transform=translate(-1, 0, 0) @ scale(0.5))
+    mother_shape.add(suz)
+
+    suzzy_shape = Node(transform=translate(0, 0, 0) @ scale(0.3))
+    suzzy_shape.add(suz)
+
+    toy_shape = Node(transform=translate(0.5, 0, 0) @ scale(0.1))
+    toy_shape.add(suz)
+
+    toy_transform = Node(transform=rotate((1.0, 0.0, 0.0), 45))
+    toy_transform.add(toy_shape)
+
+    suzzy_transform = Node(transform=translate(0, 0.5, 0))
+    suzzy_transform.add(suzzy_shape, toy_transform)
+
+    mother_transform = Node()
+    mother_transform.add(mother_shape, suzzy_transform)
+    viewer.add(mother_transform)
     # start rendering loop
     viewer.run()
 

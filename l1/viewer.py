@@ -134,7 +134,6 @@ class Node:
 
 # mesh to refactor all previous classes
 class Mesh:
-
     def __init__(self, shader, attributes, index=None):
         self.shader = shader
         names = ['view', 'projection', 'model']
