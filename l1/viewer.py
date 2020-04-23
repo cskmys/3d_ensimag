@@ -56,102 +56,96 @@ class Shader:
             GL.glDeleteProgram(self.glid)  # object dies => destroy GL object
 
 
-vertices = np.array(((0.5, 0.5, 0.0), (1.0, 0.0, 0.0),
-                    (0.5, -0.5, 0.0), (0.0, 1.0, 0.0),
-                    (-0.5, -0.5, 0.0), (0.0, 0.0, 1.0),
-                    (-0.5,  0.5, 0.0), (1.0,  0.0, 0.0)), 'f')
+class VertexArray:
+    """ helper class to create and self destroy OpenGL vertex array objects. """
+    def __init__(self, attributes, index=None, usage=GL.GL_STATIC_DRAW):
+        """ Vertex array from attributes and optional index array. Vertex
+            Attributes should be list of arrays with one row per vertex. """
 
-indices = np.array((0, 1, 3, 1, 2, 3), np.uint32)
+        # create vertex array object, bind it
+        self.glid = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.glid)
+        self.buffers = []  # we will store buffers in a list
+        nb_primitives, size = 0, 0
 
-positions = np.array(((0.5, 0.5, 0.0), (1.0, 0.0, 0.0),  # 0
-                          (0.5, -0.5, 0.0), (1.0, 0.0, 0.0),  # 1
-                          (-0.5, 0.5, 0.0), (1.0, 0.0, 0.0),  # 3
-                          (0.5, -0.5, 0.0), (0.0, 1.0, 0.0),  # 1
-                          (-0.5, -0.5, 0.0), (0.0, 1.0, 0.0),  # 2
-                          (-0.5, 0.5, 0.0), (0.0, 1.0, 0.0)),  # 3
-                         'f')
+        # load buffer per vertex attribute (in list with index = shader layout)
+        for loc, data in enumerate(attributes):
+            if data is not None:
+                # bind a new vbo, upload its data to GPU, declare size and type
+                self.buffers.append(GL.glGenBuffers(1))
+                data = np.array(data, np.float32, copy=False)  # ensure format
+                nb_primitives, size = data.shape
+                GL.glEnableVertexAttribArray(loc)
+                GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[-1])
+                GL.glBufferData(GL.GL_ARRAY_BUFFER, data, usage)
+                GL.glVertexAttribPointer(loc, size, GL.GL_FLOAT, False, 0, None)
+
+        # optionally create and upload an index buffer for this object
+        self.draw_command = GL.glDrawArrays
+        self.arguments = (0, nb_primitives)
+        if index is not None:
+            self.buffers += [GL.glGenBuffers(1)]
+            index_buffer = np.array(index, np.int32, copy=False)  # good format
+            GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.buffers[-1])
+            GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer, usage)
+            self.draw_command = GL.glDrawElements
+            self.arguments = (index_buffer.size, GL.GL_UNSIGNED_INT, None)
+
+    def execute(self, primitive):
+        """ draw a vertex array, either as direct array or indexed array """
+        GL.glBindVertexArray(self.glid)
+        self.draw_command(primitive, *self.arguments)
+
+    def __del__(self):  # object dies => kill GL array and buffers from GPU
+        GL.glDeleteVertexArrays(1, [self.glid])
+        GL.glDeleteBuffers(len(self.buffers), self.buffers)
 
 
 class SimpleSolidRectangle:
     """Hello triangle object"""
 
     def __init__(self, shader):
+        positions = np.array(((0.5, 0.5, 0.0), (0.5, -0.5, 0.0), (-0.5, 0.5, 0.0),
+                              (0.5, -0.5, 0.0), (-0.5, -0.5, 0.0), (-0.5, 0.5, 0.0)), 'f')
+
+        colors = np.array(((1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0),
+                           (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0)), 'f')
         self.shader = shader
 
         GL.glUseProgram(shader.glid)
-
-        self.vao = GL.glGenVertexArrays(1)
-        GL.glBindVertexArray(self.vao)
-        self.vbo = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.vbo)
-
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, positions, GL.GL_STATIC_DRAW)
-
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 6 * np.dtype(np.float32).itemsize, ctypes.c_void_p(0 * np.dtype(np.float32).itemsize))
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 6 * np.dtype(np.float32).itemsize, ctypes.c_void_p(3 * np.dtype(np.float32).itemsize))
-        GL.glEnableVertexAttribArray(0)
-        GL.glEnableVertexAttribArray(1)
-
-        # cleanup and unbind so no accidental subsequent state update
-        GL.glBindVertexArray(0)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+        self.vao = VertexArray([positions, colors])
 
     def draw(self, projection, view, model):
         GL.glUseProgram(self.shader.glid)
-
-        GL.glBindVertexArray(self.vao)
-
-        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
-
-        GL.glBindVertexArray(0)
+        self.vao.execute(GL.GL_TRIANGLES)
 
     def __del__(self):
-        GL.glDeleteVertexArrays(1, self.vao)
-        GL.glDeleteBuffers(1, self.vbo)
+        pass
+
+
+vertices = np.array(((0.5, 0.5, 0.0), (0.5, -0.5, 0.0), (-0.5, -0.5, 0.0), (-0.5, 0.5, 0.0)), 'f')
+color = np.array(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)), 'f')
+indices = np.array((0, 1, 3, 1, 2, 3), np.uint32)
 
 
 class SimpleRectangle:
     """Hello triangle object"""
 
     def __init__(self, shader):
+
         self.shader = shader
 
-        GL.glUseProgram(shader.glid)
+        GL.glUseProgram(self.shader.glid)
 
-        self.vao = GL.glGenVertexArrays(1)
-        GL.glBindVertexArray(self.vao)
-        self.vbo = GL.glGenBuffers(1)
-        self.ebo = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.vbo)
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.ebo)
-
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, vertices, GL.GL_STATIC_DRAW)
-        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, indices, GL.GL_STATIC_DRAW)
-
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 6 * np.dtype(np.float32).itemsize, ctypes.c_void_p(0 * np.dtype(np.float32).itemsize))
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 6 * np.dtype(np.float32).itemsize, ctypes.c_void_p(3 * np.dtype(np.float32).itemsize))
-        GL.glEnableVertexAttribArray(0)
-        GL.glEnableVertexAttribArray(1)
-
-        # cleanup and unbind so no accidental subsequent state update
-        GL.glBindVertexArray(0)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, 0)
+        self.vao = VertexArray([vertices, color], indices)
 
     def draw(self, projection, view, model):
         GL.glUseProgram(self.shader.glid)
 
-        GL.glBindVertexArray(self.vao)
-
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.ebo)
-        GL.glDrawElements(GL.GL_TRIANGLES, indices.size, GL.GL_UNSIGNED_INT, None)
-
-        GL.glBindVertexArray(0)
+        self.vao.execute(GL.GL_TRIANGLES)
 
     def __del__(self):
-        GL.glDeleteVertexArrays(1, self.vao)
-        GL.glDeleteBuffers(1, self.vbo)
-        GL.glDeleteBuffers(1, self.ebo)
+        pass
 
 
 # ------------  Viewer class & window management ------------------------------
@@ -219,6 +213,7 @@ class Viewer:
 
     def framebuffer_size_callback(self, _win, width, height):
         GL.glViewport(0, 0, width, height)
+
 
 # -------------- main program and scene setup --------------------------------
 def main():
