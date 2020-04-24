@@ -173,8 +173,7 @@ class RotationControlNode(Node):
     def key_handler(self, key):
         self.angle += 5 * int(key == self.key_up)
         self.angle -= 5 * int(key == self.key_down)
-        self.transform = rotate(self.axis, self.angle)
-        # super().draw(identity(), identity(), self.transform)  # need to get porjection and view matrix to send this model transform matrix
+        self.transform = rotate(self.axis, self.angle)  # transform belongs to parent class
         super().key_handler(key)
 
 

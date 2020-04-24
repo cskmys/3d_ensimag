@@ -469,14 +469,18 @@ class Cube(Node):
         self.add(*[mesh for mesh in load_textured('cube.obj', shader)])
 
 
+class Bunny(Node):
+    def __init__(self, shader):
+        super().__init__()
+        self.add(*[mesh for mesh in load_textured('bunny.obj', shader)])
+
+
 # -------------- main program and scene setup --------------------------------
 def main():
     """ create a window, add scene objects, then run rendering loop """
     viewer = Viewer()
     shader = Shader("texture.vert", "texture.frag")
 
-
-    light_dir = (0, -1, 0)
     # node.add(*[mesh for file in sys.argv[1:]
     #            for mesh in load_phong_mesh(file, shader, light_dir)])
     #
@@ -504,7 +508,7 @@ def main():
 
     # mother_transform.add(mother_shape, suzzy_transform)
     # tPlane = TexturedPlane('grass.png', shader)
-    tPlane = Cube(shader)
+    tPlane = Bunny(shader)
     viewer.add(tPlane)
     # start rendering loop
     viewer.run()
