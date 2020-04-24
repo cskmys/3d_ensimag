@@ -174,7 +174,9 @@ class RotationControlNode(Node):
         self.angle += 5 * int(key == self.key_up)
         self.angle -= 5 * int(key == self.key_down)
         self.transform = rotate(self.axis, self.angle)
+        # super().draw(identity(), identity(), self.transform)  # need to get porjection and view matrix to send this model transform matrix
         super().key_handler(key)
+
 
 class SimpleTriangle(Mesh):
     """Hello triangle object"""
@@ -385,8 +387,8 @@ def main():
     arm_transform.add(arm_shape, axis)
 
     base_transform = Node(transform=translate(0, 0, 0) @ rotate((1.0, 0.0, 0.0), theta))
-    base_transform.add(base_shape, arm_transform)
     base_transform.add(base_shape, rot_ctl_node)
+    base_transform.add(base_shape, arm_transform)
 
     viewer.add(base_transform)
     # start rendering loop
