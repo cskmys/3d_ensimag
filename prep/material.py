@@ -4,7 +4,7 @@ import numpy as np  # all matrix manipulations & OpenGL args
 from PIL import Image               # load images for textures
 import OpenGL.GL as GL
 import glfw
-from itertools import cycle
+# from itertools import cycle
 
 from model import Mesh
 import sh_var_lst as svl

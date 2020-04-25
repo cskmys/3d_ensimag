@@ -3,13 +3,13 @@ import os
 import OpenGL.GL as GL  # standard Python OpenGL wrapper
 import glfw  # lean window system wrapper for OpenGL
 from itertools import cycle
-from transform import Trackball, identity, rotate, translate, scale, vec, lerp, quaternion_slerp, quaternion_matrix, quaternion, quaternion_from_euler
+import transform as t
 
 from gpu import Shader
 from model import Node
 from control import GLFWTrackball
 from loaders import load_model
-from anim import KeyFrameControlNode
+from anim import ObjectKeyFrameControlNode
 
 
 class Viewer(Node):
@@ -59,7 +59,7 @@ class Viewer(Node):
             projection = self.trackball.projection_matrix(win_size)
 
             # draw our scene objects
-            self.draw(projection, view, identity())
+            self.draw(projection, view, t.identity())
 
             # flush render commands, and swap draw buffers
             glfw.swap_buffers(self.win)
@@ -81,22 +81,21 @@ class Viewer(Node):
 class Suzy(Node):
     def __init__(self, shader, light_dir):
         super().__init__()
-        self.add(*[mesh for mesh in load_phong_mesh('suzzane.obj', shader, light_dir)])
+        self.add(*[mesh for mesh in load_model('suzzane.obj', shader, light_dir)])
 
 
 class Fish(Node):
-    def __init__(self, shader, Name):
+    def __init__(self, shader, name, light_dir=(0, -1, 0)):
         super().__init__()
-        light_dir = (0, -1, 0)
         for root, dirs, files in os.walk('./Fish'):
-            for dir in dirs:
-                if dir.lower() == Name.lower():
-                    for root, dirs, files in os.walk(os.path.join(root, dir)):
+            for obj_dir in dirs:
+                if obj_dir.lower() == name.lower():
+                    for root, dirs, files in os.walk(os.path.join(root, obj_dir)):
                         for file in files:
                             if str(file).split('.')[1] == 'obj':
                                 self.add(*[mesh for mesh in load_model(os.path.join(root, file), shader, light_dir)])
                                 return
-        raise Exception('Fish ' + Name + ' not found')
+        raise Exception('Fish ' + name + ' not found')
 
 
 # -------------- main program and scene setup --------------------------------
@@ -109,18 +108,18 @@ def main():
     # 'NurseShark', 'ReefFish20', 'SeaHorse', 'LionFish', 'WhaleShark', 'ReefFish7', 'ReefFish3',
     # 'BlueTang', 'ReefFish5', 'ReefFish0', 'ReefFish4', 'SeaSnake']
 
-    tPlane = Fish(shader, 'ReefFish5')
+    t_plane = Fish(shader, 'ReefFish5')
     # translate_keys = {0: vec(0, 0, 0), 2: vec(1, 1, 0), 4: vec(0, 0, 0)}
     # rotate_keys = {0: quaternion(), 2: quaternion_from_euler(180, 45, 90),
     #                3: quaternion_from_euler(180, 0, 180), 4: quaternion()}
     # scale_keys = {0: 1, 2: 0.5, 4: 1}
-    translate_keys = {0: vec(0, 0, 0)}
-    rotate_keys = {0: quaternion(),
-                   2: quaternion_from_euler(180, 0, 0),
-                   4: quaternion_from_euler(360, 0, 0)}
+    translate_keys = {0: t.vec(0, 0, 0)}
+    rotate_keys = {0: t.quaternion(),
+                   2: t.quaternion_from_euler(180, 0, 0),
+                   4: t.quaternion_from_euler(360, 0, 0)}
     scale_keys = {0: 1}
-    keynode = KeyFrameControlNode(translate_keys, rotate_keys, scale_keys)
-    keynode.add(tPlane)
+    keynode = ObjectKeyFrameControlNode(translate_keys, rotate_keys, scale_keys)
+    keynode.add(t_plane)
 
     viewer.add(keynode)
     viewer.run()

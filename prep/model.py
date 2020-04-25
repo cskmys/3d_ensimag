@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
 
-#!/usr/bin/env python3
-"""
-Python OpenGL practical application.
-"""
-# Python built-in modules
-import os  # os function, i.e. checking file status
-from itertools import cycle
-import sys
-
 import OpenGL.GL as GL
-from transform import identity
-from gpu import Shader, VertexArray
+import transform as t
+import gpu
 import sh_var_lst as svl
 
 
@@ -19,7 +10,7 @@ import sh_var_lst as svl
 class Node:
     """ Scene graph transform and parameter broadcast node """
 
-    def __init__(self, children=(), transform=identity()):
+    def __init__(self, children=(), transform=t.identity()):
         self.transform = transform
         self.children = list(iter(children))
 
@@ -47,7 +38,7 @@ class Mesh:
         self.shader = shader
         names = [svl.view, svl.projection, svl.model]
         self.loc = {n: GL.glGetUniformLocation(shader.glid, n) for n in names}
-        self.vertex_array = VertexArray(attributes, index)
+        self.vertex_array = gpu.VertexArray(attributes, index)
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
         GL.glUseProgram(self.shader.glid)

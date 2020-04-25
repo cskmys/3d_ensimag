@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # list of all vs 'in' and uniforms of both vs n fs
 
 model = 'mvp.model'

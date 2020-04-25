@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from bisect import bisect_left
-from transform import Trackball, identity, rotate, translate, scale, vec, lerp, quaternion_slerp, quaternion_matrix, quaternion, quaternion_from_euler
+import transform as t
 import glfw
 
 from model import Node
@@ -9,7 +9,7 @@ from model import Node
 
 class KeyFrames:
     """ Stores keyframe pairs for any value type with interpolation_function"""
-    def __init__(self, time_value_pairs, interpolation_function=lerp):
+    def __init__(self, time_value_pairs, interpolation_function=t.lerp):
         if isinstance(time_value_pairs, dict):  # convert to list of pairs
             time_value_pairs = time_value_pairs.items()
         keyframes = sorted(((key[0], key[1]) for key in time_value_pairs))
@@ -36,19 +36,35 @@ class TransformKeyFrames:
     def __init__(self, translate_keys, rotate_keys, scale_keys):
         """ stores 3 keyframe sets for translation, rotation, scale """
         self.translate_keys = KeyFrames(translate_keys)
-        self.rotate_keys = KeyFrames(rotate_keys, quaternion_slerp)
+        self.rotate_keys = KeyFrames(rotate_keys, t.quaternion_slerp)
         self.scale_keys = KeyFrames(scale_keys)
 
     def value(self, time):
         """ Compute each component's interpolation and compose TRS matrix """
-        trans_mat = translate(self.translate_keys.value(time))
-        rot_mat = quaternion_matrix(self.rotate_keys.value(time))
-        scale_mat = scale(self.scale_keys.value(time))
+        trans_mat = t.translate(self.translate_keys.value(time))
+        rot_mat = t.quaternion_matrix(self.rotate_keys.value(time))
+        scale_mat = t.scale(self.scale_keys.value(time))
         keyframe_transform = trans_mat @ (rot_mat @ scale_mat)
         return keyframe_transform
 
 
-class KeyFrameControlNode(Node):
+class ObjectKeyFrameControlNode(Node):
+    """ Place node with transform keys above a controlled subtree """
+    def __init__(self, translate_keys, rotate_keys, scale_keys):
+        super().__init__()
+        self.keyframes = TransformKeyFrames(translate_keys, rotate_keys, scale_keys)
+
+    def draw(self, projection, view, model):
+        """ When redraw requested, interpolate our node transform from keys """
+        self.transform = self.keyframes.value(glfw.get_time())  # transform belongs to parent class i,e, Node
+        super().draw(projection, view, model)
+
+    def key_handler(self, key):
+        glfw.set_time(0)
+        super().key_handler(key)
+
+
+class CameraKeyFrameControlNode(Node):
     """ Place node with transform keys above a controlled subtree """
     def __init__(self, translate_keys, rotate_keys, scale_keys):
         super().__init__()
