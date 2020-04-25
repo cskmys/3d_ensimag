@@ -8,6 +8,7 @@ import glfw
 
 from model import Mesh
 import sh_var_lst as svl
+from camera import get_camera_position
 
 
 # -------------- OpenGL Texture Wrapper ---------------------------------------
@@ -48,7 +49,7 @@ class TexturedPhongMesh(Mesh):
         GL.glUseProgram(self.shader.glid)
 
         self._TexturedMeshDraw()
-        self._PhongDraw(view)
+        self._PhongDraw(get_camera_position())
         super().draw(projection, view, model, primitives)
 
         self._TexturedMeshPostDraw()
@@ -63,8 +64,8 @@ class TexturedPhongMesh(Mesh):
         loc = {n: GL.glGetUniformLocation(self.shader.glid, n) for n in names}
         self.loc.update(loc)
 
-    def _PhongDraw(self, view):
-        self.light_dir = [np.sin(glfw.get_time() * val) for val in [2.0, 0.7, 1.3]]
+    def _PhongDraw(self, camera_pos):
+        # self.light_dir = [np.sin(glfw.get_time() * val) for val in [2.0, 0.7, 1.3]]
         GL.glUniform3fv(self.loc[svl.light_dir], 1, self.light_dir)
 
         GL.glUniform3fv(self.loc[svl.k_a], 1, self.k_a)
@@ -72,8 +73,7 @@ class TexturedPhongMesh(Mesh):
         GL.glUniform3fv(self.loc[svl.k_s], 1, self.k_s)
         GL.glUniform1f(self.loc[svl.s], max(self.s, 0.001))
 
-        w_camera_position = np.linalg.inv(view)[:, 3]
-        GL.glUniform3fv(self.loc[svl.camera_position], 1, w_camera_position)
+        GL.glUniform3fv(self.loc[svl.camera_position], 1, camera_pos)
 
     def _TexturedMeshInit(self, texture):
         loc = {svl.diffuse_map: GL.glGetUniformLocation(self.shader.glid, svl.diffuse_map)}

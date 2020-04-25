@@ -60,8 +60,9 @@ class ObjectKeyFrameControlNode(Node):
         super().draw(projection, view, model)
 
     def key_handler(self, key):
-        glfw.set_time(0)
-        super().key_handler(key)
+        if key == glfw.KEY_SPACE:
+            glfw.set_time(0)
+            super().key_handler(key)
 
 
 class CameraKeyFrameControlNode(Node):
