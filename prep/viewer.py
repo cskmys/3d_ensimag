@@ -128,6 +128,7 @@ def main():
     viewer = Viewer(SCR_WIDTH, SCR_HEIGHT)
     world_shader = Shader(svl.world_shader['vs'], svl.world_shader['fs'])
     skybox_shader = Shader(svl.skybox_shader['vs'], svl.skybox_shader['fs'])
+    screen_shader = Shader(svl.screen_shader['vs'], svl.screen_shader['fs'])
     # ['ReefFish12', 'TinyYellowFish', 'YellowTang', 'Barracuda', 'ReefFish17', 'ReefFish14',
     # 'BlueStarfish', 'BottlenoseDolphin', 'GiantGrouper', 'ClownFish2', 'ReefFish16', 'ReefFish8',
     # 'NurseShark', 'ReefFish20', 'SeaHorse', 'LionFish', 'WhaleShark', 'ReefFish7', 'ReefFish3',
@@ -144,6 +145,9 @@ def main():
     scale_keys = {0: 1}
     keynode = ObjectKeyFrameControlNode(translate_keys, rotate_keys, scale_keys)
     keynode.add(fish_shape)
+
+    screen_shape = Node()
+    screen_shape.add(o.Framebuffer(screen_shader, SCR_WIDTH, SCR_HEIGHT))
 
     viewer.add(keynode, skybox_shape)
     viewer.run()

@@ -82,11 +82,12 @@ class FrameTexture:
         GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_DEPTH24_STENCIL8, width, height)
         GL.glFramebufferRenderbuffer(GL.GL_FRAMEBUFFER, GL.GL_DEPTH_STENCIL_ATTACHMENT, GL.GL_RENDERBUFFER, self.rbid)
         assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete"
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
 
     def __del__(self):  # delete GL texture from GPU when object dies
-        GL.glDeleteFramebuffers(self.fbid)
+        GL.glDeleteFramebuffers(1, self.fbid)
         GL.glDeleteTextures(self.tcid)
-        GL.glDeleteRenderbuffers(self.rbid)
+        GL.glDeleteRenderbuffers(1, self.rbid)
 
 
 class CubeMapMesh(Mesh):
