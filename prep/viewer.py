@@ -99,7 +99,6 @@ class Viewer(Node):
             if key == glfw.KEY_D:
                 self.camera.process_keyboard('RIGHT', self.delta_time)
 
-
     def mouse_callback(self, _win, xpos, ypos):
         """ Rotate on left-click & drag, pan on right-click & drag """
         if self.first_mouse is True:
