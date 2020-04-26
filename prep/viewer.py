@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-import os
+
 import OpenGL.GL as GL  # standard Python OpenGL wrapper
 import glfw  # lean window system wrapper for OpenGL
-from itertools import cycle
 import transform as t
+import objects as o
+import sh_var_lst as svl
 
-from gpu import Shader
+from itertools import cycle
 from model import Node
+from gpu import Shader
 from camera import init_camera  # GLFWTrackball
-from loaders import load_model
 from anim import ObjectKeyFrameControlNode
+
+SCR_WIDTH = 1280
+SCR_HEIGHT = 720
 
 
 class Viewer(Node):
@@ -25,7 +29,7 @@ class Viewer(Node):
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         self.win = glfw.create_window(width, height, 'Viewer', None, None)
         glfw.set_input_mode(self.win, glfw.CURSOR, glfw.CURSOR_DISABLED)
-        # make win's OpenGL context current; no OpenGL calls can happen before
+
         glfw.make_context_current(self.win)
 
         # register event handlers
@@ -118,38 +122,21 @@ class Viewer(Node):
         GL.glViewport(0, 0, width, height)
 
 
-class Suzy(Node):
-    def __init__(self, shader, light_dir):
-        super().__init__()
-        self.add(*[mesh for mesh in load_model('suzzane.obj', shader, light_dir)])
-
-
-class Fish(Node):
-    def __init__(self, shader, name, light_dir=(0, -1, 0)):
-        super().__init__()
-        for root, dirs, files in os.walk('./Fish'):
-            for obj_dir in dirs:
-                if obj_dir.lower() == name.lower():
-                    for root, dirs, files in os.walk(os.path.join(root, obj_dir)):
-                        for file in files:
-                            if str(file).split('.')[1] == 'obj':
-                                self.add(*[mesh for mesh in load_model(os.path.join(root, file), shader, light_dir)])
-                                return
-        raise Exception('Fish ' + name + ' not found')
-
-
 # -------------- main program and scene setup --------------------------------
 def main():
     """ create a window, add scene objects, then run rendering loop """
-    viewer = Viewer()
-    shader = Shader("prep.vert", "prep.frag")
+    viewer = Viewer(SCR_WIDTH, SCR_HEIGHT)
+    world_shader = Shader(svl.world_shader['vs'], svl.world_shader['fs'])
+    skybox_shader = Shader(svl.skybox_shader['vs'], svl.skybox_shader['fs'])
     # ['ReefFish12', 'TinyYellowFish', 'YellowTang', 'Barracuda', 'ReefFish17', 'ReefFish14',
     # 'BlueStarfish', 'BottlenoseDolphin', 'GiantGrouper', 'ClownFish2', 'ReefFish16', 'ReefFish8',
     # 'NurseShark', 'ReefFish20', 'SeaHorse', 'LionFish', 'WhaleShark', 'ReefFish7', 'ReefFish3',
     # 'BlueTang', 'ReefFish5', 'ReefFish0', 'ReefFish4', 'SeaSnake']
+    skybox_shape = Node()
+    skybox_shape.add(o.Skybox(skybox_shader))
 
     fish_shape = Node(transform=t.translate(0.0, 0.0, 0.0) @ t.scale(0.5))
-    fish_shape.add(Fish(shader, 'ReefFish5'))
+    fish_shape.add(o.Fish(world_shader, 'ReefFish5'))
     translate_keys = {0: t.vec(0, 0, 0)}
     rotate_keys = {0: t.quaternion(),
                    2: t.quaternion_from_euler(180, 0, 0),
@@ -158,7 +145,7 @@ def main():
     keynode = ObjectKeyFrameControlNode(translate_keys, rotate_keys, scale_keys)
     keynode.add(fish_shape)
 
-    viewer.add(keynode)
+    viewer.add(keynode, skybox_shape)
     viewer.run()
 
 

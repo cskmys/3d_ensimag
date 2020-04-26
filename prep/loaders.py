@@ -3,7 +3,7 @@
 import assimpcy  # 3D resource loader
 import os  # os function, i.e. checking file status
 
-from material import Texture, TexturedPhongMesh
+from material import Texture, TexturedPhongMesh, CubeMap, CubeMapMesh, FrameTexture, FramebufferMesh
 
 
 def load_model(file, shader, light_dir, tex_file=None):
@@ -48,6 +48,37 @@ def load_model(file, shader, light_dir, tex_file=None):
     return meshes
 
 
+def load_cubemap(files, shader):
+    """ load resources from file using assimp, return list of Meshes"""
+    tex_files = []
+    for file in files:
+        path = os.path.dirname(file) if os.path.dirname(file) != '' else './'
+        name = os.path.basename(file)
+        paths = os.walk(path, followlinks=True)
+        found = [os.path.join(d, f) for d, _, n in paths for f in n
+                    if name.startswith(f) or f.startswith(name)]
+        assert found, 'Cannot find texture %s in %s subtree' % (name, path)
+        tex_files.append(found[0])
+    assert len(tex_files) == 6, '6 textures are needed for cubemap'
+    file_order = ['_rt', '_lf', '_up', '_dn', '_ft', '_bk']
+    cmap_textures = []
+    for order in file_order:
+        for file in tex_files:
+            if order in file:
+                cmap_textures.append(file)
+                break
+
+    c_map = CubeMap(cmap_textures)
+    mesh = CubeMapMesh(shader, c_map)
+    print('Loaded Skybox')
+    return mesh
+
+
+def load_framebuffer(shader, width, height):
+    frame = FrameTexture(width, height)
+    mesh = FramebufferMesh(shader, frame)
+    return mesh
+
 # def load_textured(file, shader, tex_file=None):
 #     """ load resources from file using assimp, return list of TexturedMesh """
 #     try:
@@ -83,3 +114,4 @@ def load_model(file, shader, light_dir, tex_file=None):
 #     size = sum((mesh.mNumFaces for mesh in scene.mMeshes))
 #     print('Loaded %s\t(%d meshes, %d faces)' % (file, len(meshes), size))
 #     return meshes
+

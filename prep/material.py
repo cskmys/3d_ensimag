@@ -9,7 +9,7 @@ import glfw
 from model import Mesh
 import sh_var_lst as svl
 from camera import get_camera_position
-
+import transform as t
 
 # -------------- OpenGL Texture Wrapper ---------------------------------------
 class Texture:
@@ -35,6 +35,88 @@ class Texture:
 
     def __del__(self):  # delete GL texture from GPU when object dies
         GL.glDeleteTextures(self.glid)
+
+
+class CubeMap:
+    """ Helper class to create and automatically destroy textures """
+    def __init__(self, tex_files, wrap_mode=GL.GL_CLAMP_TO_EDGE, min_filter=GL.GL_LINEAR,
+                 mag_filter=GL.GL_LINEAR):
+        assert len(tex_files) == 6, "Cube Map should have 6 files"
+        self.glid = GL.glGenTextures(1)
+        GL.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, self.glid)
+        for i, tex_file in enumerate(tex_files):
+            try:
+                tex = np.asarray(Image.open(tex_file).convert('RGBA'))
+                GL.glTexImage2D(GL.GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL.GL_RGBA, tex.shape[1], tex.shape[0], 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, tex)
+
+                message = 'Loaded cubemap %s\t(%s, %s, %s, %s)'
+                print(message % (tex_file, tex.shape, wrap_mode, min_filter, mag_filter))
+            except FileNotFoundError:
+                print("ERROR: unable to load texture file %s" % tex_file)
+
+        GL.glTexParameteri(GL.GL_TEXTURE_CUBE_MAP, GL.GL_TEXTURE_MIN_FILTER, mag_filter)
+        GL.glTexParameteri(GL.GL_TEXTURE_CUBE_MAP, GL.GL_TEXTURE_MAG_FILTER, min_filter)
+        GL.glTexParameteri(GL.GL_TEXTURE_CUBE_MAP, GL.GL_TEXTURE_WRAP_S, wrap_mode)
+        GL.glTexParameteri(GL.GL_TEXTURE_CUBE_MAP, GL.GL_TEXTURE_WRAP_T, wrap_mode)
+        GL.glTexParameteri(GL.GL_TEXTURE_CUBE_MAP, GL.GL_TEXTURE_WRAP_R, wrap_mode)
+
+    def __del__(self):  # delete GL texture from GPU when object dies
+        GL.glDeleteTextures(self.glid)
+
+
+class FrameTexture:
+    def __init__(self, width, height, min_filter=GL.GL_LINEAR, mag_filter=GL.GL_LINEAR):
+
+        self.fbid = GL.glGenFramebuffers(1)
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fbid)
+
+        self.tcid = GL.glGenTextures(1)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.tcid)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, width, height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, None)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, mag_filter)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, min_filter)
+        GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_2D, self.tcid, 0)
+
+        self.rbid = GL.glGenRenderbuffers(1)
+        GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self.rbid)
+        GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_DEPTH24_STENCIL8, width, height)
+        GL.glFramebufferRenderbuffer(GL.GL_FRAMEBUFFER, GL.GL_DEPTH_STENCIL_ATTACHMENT, GL.GL_RENDERBUFFER, self.rbid)
+        assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete"
+
+    def __del__(self):  # delete GL texture from GPU when object dies
+        GL.glDeleteFramebuffers(self.fbid)
+        GL.glDeleteTextures(self.tcid)
+        GL.glDeleteRenderbuffers(self.rbid)
+
+
+class CubeMapMesh(Mesh):
+    def __init__(self, shader, cubemap):
+        pos = ((-1.0,  1.0, -1.0), (-1.0, -1.0, -1.0), ( 1.0, -1.0, -1.0), ( 1.0, -1.0, -1.0), ( 1.0,  1.0, -1.0), (-1.0,  1.0, -1.0),
+                (-1.0, -1.0,  1.0), (-1.0, -1.0, -1.0), (-1.0,  1.0, -1.0), (-1.0,  1.0, -1.0), (-1.0,  1.0,  1.0), (-1.0, -1.0,  1.0),
+                ( 1.0, -1.0, -1.0), ( 1.0, -1.0,  1.0), ( 1.0,  1.0,  1.0), ( 1.0,  1.0,  1.0), ( 1.0,  1.0, -1.0), ( 1.0, -1.0, -1.0),
+                (-1.0, -1.0,  1.0), (-1.0,  1.0,  1.0), ( 1.0,  1.0,  1.0), ( 1.0,  1.0,  1.0), ( 1.0, -1.0,  1.0), (-1.0, -1.0,  1.0),
+                (-1.0,  1.0, -1.0), ( 1.0,  1.0, -1.0), ( 1.0,  1.0,  1.0), ( 1.0,  1.0,  1.0), (-1.0,  1.0,  1.0), (-1.0,  1.0, -1.0),
+                (-1.0, -1.0, -1.0), (-1.0, -1.0,  1.0), ( 1.0, -1.0, -1.0), ( 1.0, -1.0, -1.0), (-1.0, -1.0,  1.0), ( 1.0, -1.0,  1.0))
+        super().__init__(shader, [pos])
+        loc = GL.glGetUniformLocation(shader.glid, svl.skybox)
+        self.loc[svl.skybox] = loc
+        self.cubemap = cubemap
+
+    def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
+        GL.glDepthFunc(GL.GL_LEQUAL);
+        GL.glUseProgram(self.shader.glid)
+        GL.glUniform1i(self.loc[svl.skybox], 0)
+
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, self.cubemap.glid)
+
+        cmap_view = view[:3, :3]
+        cmap_view = np.pad(cmap_view, [(0, 1), (0, 1)], mode='constant')
+        cmap_view[3][3] = 1
+        super().draw(projection, cmap_view, t.identity(), primitives)
+        GL.glDepthFunc(GL.GL_LESS);
+        # GL.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, 0)
+        GL.glUseProgram(0)
 
 
 class TexturedPhongMesh(Mesh):
@@ -88,6 +170,28 @@ class TexturedPhongMesh(Mesh):
     def _TexturedMeshPostDraw(self):
         GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
 
+
+class FramebufferMesh(Mesh):
+    def __init__(self, shader, frame_tex):
+        pos = ((-1.0,  1.0), (-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), ( 1.0, -1.0), (1.0,  1.0))
+        tex = ((0.0, 1.0), (0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0))
+        super().__init__(shader, [pos, tex])
+        loc = GL.glGetUniformLocation(shader.glid, svl.screen_texture)
+        self.frame_tex = frame_tex
+        self.loc[svl.screen_texture] = loc
+
+    def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.frame_tex.fbid)
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glClearColor(1, 1, 1, 1)
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+
+        GL.glUseProgram(self.shader.glid)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.frame_tex.tcid)
+        GL.glUniform1i(self.loc[svl.screen_texture], 0)
+        super().draw(t.identity(), t.identity(), t.identity())
+        GL.glUseProgram(0)
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
 
 # # -------------- Example texture plane class ----------------------------------
 # class TexturedPlane(Mesh):
