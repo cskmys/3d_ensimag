@@ -192,7 +192,7 @@ class FramebufferMesh(Mesh):
         GL.glUniform1i(self.loc[svl.screen_texture], 0)
         super().draw(t.identity(), t.identity(), t.identity())
         GL.glUseProgram(0)
-        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
+
 
 # # -------------- Example texture plane class ----------------------------------
 # class TexturedPlane(Mesh):

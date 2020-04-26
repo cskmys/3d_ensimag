@@ -68,6 +68,9 @@ class Viewer(Node):
             self.delta_time = current_frame - self.last_frame
             self.last_frame = current_frame - self.last_frame
             # clear draw buffer and depth buffer (<-TP2)
+            GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0);
+            GL.glEnable(GL.GL_DEPTH_TEST)
+            GL.glClearColor(0.1, 0.1, 0.1, 1.0)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
             win_size = glfw.get_window_size(self.win)
@@ -149,7 +152,7 @@ def main():
     screen_shape = Node()
     screen_shape.add(o.Framebuffer(screen_shader, SCR_WIDTH, SCR_HEIGHT))
 
-    viewer.add(keynode, skybox_shape)
+    viewer.add(keynode, skybox_shape, screen_shape)
     viewer.run()
 
 
