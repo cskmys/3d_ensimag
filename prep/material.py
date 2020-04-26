@@ -11,6 +11,7 @@ import sh_var_lst as svl
 from camera import get_camera_position
 import transform as t
 
+
 # -------------- OpenGL Texture Wrapper ---------------------------------------
 class Texture:
     """ Helper class to create and automatically destroy textures """
@@ -65,22 +66,28 @@ class CubeMap:
 
 
 class FrameTexture:
-    def __init__(self, width, height, min_filter=GL.GL_LINEAR, mag_filter=GL.GL_LINEAR):
+    def __init__(self, width, height, wrap_mode=GL.GL_CLAMP_TO_EDGE, min_filter=GL.GL_LINEAR, mag_filter=GL.GL_LINEAR):
 
         self.fbid = GL.glGenFramebuffers(1)
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fbid)
 
         self.tcid = GL.glGenTextures(1)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.tcid)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, width, height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, None)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, width, height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, None) #  ctypes.c_void_p(0))
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, mag_filter)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, min_filter)
+        # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, wrap_mode)
+        # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, wrap_mode)
         GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_2D, self.tcid, 0)
 
         self.rbid = GL.glGenRenderbuffers(1)
         GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self.rbid)
         GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_DEPTH24_STENCIL8, width, height)
         GL.glFramebufferRenderbuffer(GL.GL_FRAMEBUFFER, GL.GL_DEPTH_STENCIL_ATTACHMENT, GL.GL_RENDERBUFFER, self.rbid)
+
+        GL.glFramebufferTexture(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, self.tcid, 0);
+        GL.glDrawBuffers(1, GL.GL_COLOR_ATTACHMENT0);
+
         assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete"
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
 
@@ -182,7 +189,7 @@ class FramebufferMesh(Mesh):
         self.loc[svl.screen_texture] = loc
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
-        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.frame_tex.fbid)
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
         GL.glDisable(GL.GL_DEPTH_TEST)
         GL.glClearColor(1, 1, 1, 1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
@@ -192,6 +199,8 @@ class FramebufferMesh(Mesh):
         GL.glUniform1i(self.loc[svl.screen_texture], 0)
         super().draw(t.identity(), t.identity(), t.identity())
         GL.glUseProgram(0)
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.frame_tex.fbid)
+
 
 
 # # -------------- Example texture plane class ----------------------------------

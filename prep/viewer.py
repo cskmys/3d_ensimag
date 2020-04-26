@@ -152,7 +152,8 @@ def main():
     screen_shape = Node()
     screen_shape.add(o.Framebuffer(screen_shader, SCR_WIDTH, SCR_HEIGHT))
 
-    viewer.add(keynode, skybox_shape, screen_shape)
+    # FOLLOW THIS ORDER STRICTLY IF YOU WANT EVERYTHING TO WORK
+    viewer.add(screen_shape, skybox_shape, keynode)
     viewer.run()
 
 
