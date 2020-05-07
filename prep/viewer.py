@@ -49,8 +49,7 @@ class Viewer(Node):
         GL.glEnable(GL.GL_DEPTH_TEST)  # depth test now enabled (TP2)
         GL.glEnable(GL.GL_CULL_FACE)  # backface culling enabled (TP2)
 
-        # initialize trackball
-        # self.trackball = GLFWTrackball(self.win)
+        # initialize camera
         self.camera = init_camera(position=t.vec(0.0, 0.0, 3.0))
         # cyclic iterator to easily toggle polygon rendering modes
         self.fill_modes = cycle([GL.GL_LINE, GL.GL_POINT, GL.GL_FILL])
@@ -74,8 +73,6 @@ class Viewer(Node):
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
             win_size = glfw.get_window_size(self.win)
-            # view = self.trackball.view_matrix()
-            # projection = self.trackball.projection_matrix(win_size)
             view = self.camera.get_view_matrix()
             projection = t.perspective(self.camera.Zoom, win_size[0] / win_size[1], 0.1, 100.0)
 
@@ -139,21 +136,32 @@ def main():
     skybox_shape = Node()
     skybox_shape.add(o.Skybox(skybox_shader))
 
-    fish_shape = Node(transform=t.translate(0.0, 0.0, 0.0) @ t.scale(0.5))
-    fish_shape.add(o.Fish(world_shader, 'ReefFish5'))
+    reef_fish_shape = Node(transform=t.translate(0.0, 0.0, 0.0) @ t.scale(0.5))
+    reef_fish_shape.add(o.Fish(world_shader, 'ReefFish5'))
     translate_keys = {0: t.vec(0, 0, 0)}
     rotate_keys = {0: t.quaternion(),
                    2: t.quaternion_from_euler(180, 0, 0),
                    4: t.quaternion_from_euler(360, 0, 0)}
     scale_keys = {0: 1}
-    keynode = ObjectKeyFrameControlNode(translate_keys, rotate_keys, scale_keys)
-    keynode.add(fish_shape)
+    reef_keynode = ObjectKeyFrameControlNode(translate_keys, rotate_keys, scale_keys)
+    reef_keynode.add(reef_fish_shape)
+
+    bluetang_fish_shape = Node(transform=t.translate(0.5, 0.0, 0.0) @ t.scale(0.5))
+    reef_fish_shape.add(o.Fish(world_shader, 'bluetang'))
+
+    world_shape = Node()
+    world_shape.add(bluetang_fish_shape, reef_keynode)
+
+    # floor_shape = Node(transform=t.rotate((1, 0, 0), 90))
+    # # floor_shape.add(o.Floor(world_shader))
+    # floor_transform = Node()
+    # floor_transform.add(floor_shape, keynode)
 
     screen_shape = Node()
     screen_shape.add(o.Framebuffer(screen_shader, SCR_WIDTH, SCR_HEIGHT))
 
     # FOLLOW THIS ORDER STRICTLY IF YOU WANT EVERYTHING TO WORK
-    viewer.add(screen_shape, skybox_shape, keynode)
+    viewer.add(screen_shape, skybox_shape, world_shape)
     viewer.run()
 
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # list of all vs 'in' and uniforms of both vs n fs
 
-world_shader = {'vs': 'prep.vert', 'fs': 'prep.frag'}
+world_shader = {'vs': 'world.vert', 'fs': 'world.frag'}
 skybox_shader = {'vs': 'skybox.vert', 'fs': 'skybox.frag'}
 screen_shader = {'vs': 'screen.vert', 'fs': 'screen.frag'}
 
 screen_texture = 'screenTexture'
+exposure = 'exposure'
 
 model = 'mvp.model'
 view = 'mvp.view'

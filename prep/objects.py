@@ -42,3 +42,9 @@ class Framebuffer(Node):
     def __init__(self, shader, width, height):
         super().__init__()
         self.add(ld.load_framebuffer(shader, width, height))
+
+
+class Floor(Node):
+    def __init__(self, shader):
+        super().__init__()
+        self.add(ld.load_floor('./floor/floor.obj', shader))

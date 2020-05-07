@@ -4,7 +4,7 @@ import numpy as np  # all matrix manipulations & OpenGL args
 from PIL import Image               # load images for textures
 import OpenGL.GL as GL
 import glfw
-# from itertools import cycle
+from itertools import cycle
 
 from model import Mesh
 import sh_var_lst as svl
@@ -71,9 +71,11 @@ class FrameTexture:
         self.fbid = GL.glGenFramebuffers(1)
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fbid)
 
+
         self.tcid = GL.glGenTextures(1)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.tcid)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, width, height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, None) #  ctypes.c_void_p(0))
+
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, width, height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, None)  # ctypes.c_void_p(0))
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, mag_filter)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, min_filter)
         # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, wrap_mode)
@@ -106,8 +108,9 @@ class CubeMapMesh(Mesh):
                 (-1.0,  1.0, -1.0), ( 1.0,  1.0, -1.0), ( 1.0,  1.0,  1.0), ( 1.0,  1.0,  1.0), (-1.0,  1.0,  1.0), (-1.0,  1.0, -1.0),
                 (-1.0, -1.0, -1.0), (-1.0, -1.0,  1.0), ( 1.0, -1.0, -1.0), ( 1.0, -1.0, -1.0), (-1.0, -1.0,  1.0), ( 1.0, -1.0,  1.0))
         super().__init__(shader, [pos])
-        loc = GL.glGetUniformLocation(shader.glid, svl.skybox)
-        self.loc[svl.skybox] = loc
+        names = [svl.skybox]
+        loc = {n: GL.glGetUniformLocation(self.shader.glid, n) for n in names}
+        self.loc.update(loc)
         self.cubemap = cubemap
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
@@ -180,13 +183,16 @@ class TexturedPhongMesh(Mesh):
 
 
 class FramebufferMesh(Mesh):
-    def __init__(self, shader, frame_tex):
+    def __init__(self, shader, frame_tex, exposure=1.0):
         pos = ((-1.0,  1.0), (-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), ( 1.0, -1.0), (1.0,  1.0))
         tex = ((0.0, 1.0), (0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0))
         super().__init__(shader, [pos, tex])
-        loc = GL.glGetUniformLocation(shader.glid, svl.screen_texture)
+
+        names = [svl.screen_texture, svl.exposure]
+        loc = {n: GL.glGetUniformLocation(self.shader.glid, n) for n in names}
+        self.loc.update(loc)
         self.frame_tex = frame_tex
-        self.loc[svl.screen_texture] = loc
+        self.exposure = exposure
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
@@ -197,54 +203,58 @@ class FramebufferMesh(Mesh):
         GL.glUseProgram(self.shader.glid)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.frame_tex.tcid)
         GL.glUniform1i(self.loc[svl.screen_texture], 0)
+        self.exposure = glfw.get_time()*2.5
+        GL.glUniform1f(self.loc[svl.exposure], self.exposure)
         super().draw(t.identity(), t.identity(), t.identity())
         GL.glUseProgram(0)
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.frame_tex.fbid)
 
 
+# -------------- Example texture plane class ----------------------------------
+class TexturedPlaneMesh(Mesh):
+    """ Simple first textured object """
 
-# # -------------- Example texture plane class ----------------------------------
-# class TexturedPlane(Mesh):
-#     """ Simple first textured object """
-#
-#     def __init__(self, tex_file, shader):
-#
-#         vertices = 100 * np.array(
-#             ((-1, -1, 0), (1, -1, 0), (1, 1, 0), (-1, 1, 0)), np.float32)
-#         faces = np.array(((0, 1, 2), (0, 2, 3)), np.uint32)
-#         super().__init__(shader, [vertices], faces)
-#
-#         loc = GL.glGetUniformLocation(shader.glid, 'diffuse_map')
-#         self.loc['diffuse_map'] = loc
-#
-#         # interactive toggles
-#         self.wrap = cycle([GL.GL_REPEAT, GL.GL_MIRRORED_REPEAT,
-#                            GL.GL_CLAMP_TO_BORDER, GL.GL_CLAMP_TO_EDGE])
-#         self.filter = cycle([(GL.GL_NEAREST, GL.GL_NEAREST),
-#                              (GL.GL_LINEAR, GL.GL_LINEAR),
-#                              (GL.GL_LINEAR, GL.GL_LINEAR_MIPMAP_LINEAR)])
-#         self.wrap_mode, self.filter_mode = next(self.wrap), next(self.filter)
-#         self.tex_file = tex_file
-#
-#         # setup texture and upload it to GPU
-#         self.texture = Texture(tex_file, self.wrap_mode, *self.filter_mode)
-#
-#     def key_handler(self, key):
-#         # some interactive elements
-#         if key == glfw.KEY_F6:
-#             self.wrap_mode = next(self.wrap)
-#             self.texture = Texture(self.tex_file, self.wrap_mode, *self.filter_mode)
-#             print('F6')
-#         if key == glfw.KEY_F7:
-#             self.filter_mode = next(self.filter)
-#             self.texture = Texture(self.tex_file, self.wrap_mode, *self.filter_mode)
-#             print('F7')
-#
-#     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
-#         GL.glUseProgram(self.shader.glid)
-#
-#         # texture access setups
-#         GL.glActiveTexture(GL.GL_TEXTURE0)
-#         GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture.glid)
-#         GL.glUniform1i(self.loc['diffuse_map'], 0)
-#         super().draw(projection, view, model, primitives)
+    def __init__(self, shader, tex_file):
+
+        vertices = 100 * np.array(
+            ((-1, -1, 0), (1, -1, 0), (1, 1, 0), (-1, 1, 0)), np.float32)
+        # vertices = 100 * np.array(
+        #     ((-1, -1, -1), (1, -1, -1), (1, -1, 1), (-1, -1, 1)), np.float32)
+        faces = np.array(((0, 1, 2), (0, 2, 3)), np.uint32)
+        super().__init__(shader, [vertices], faces)
+
+        names = [svl.diffuse_map]
+        loc = {n: GL.glGetUniformLocation(self.shader.glid, n) for n in names}
+        self.loc.update(loc)
+
+        # interactive toggles
+        self.wrap = cycle([GL.GL_REPEAT, GL.GL_MIRRORED_REPEAT,
+                           GL.GL_CLAMP_TO_BORDER, GL.GL_CLAMP_TO_EDGE])
+        self.filter = cycle([(GL.GL_NEAREST, GL.GL_NEAREST),
+                             (GL.GL_LINEAR, GL.GL_LINEAR),
+                             (GL.GL_LINEAR, GL.GL_LINEAR_MIPMAP_LINEAR)])
+        self.wrap_mode, self.filter_mode = next(self.wrap), next(self.filter)
+        self.tex_file = tex_file
+
+        # setup texture and upload it to GPU
+        self.texture = Texture(tex_file, self.wrap_mode, *self.filter_mode)
+
+    def key_handler(self, key):
+        # some interactive elements
+        if key == glfw.KEY_F6:
+            self.wrap_mode = next(self.wrap)
+            self.texture = Texture(self.tex_file, self.wrap_mode, *self.filter_mode)
+            print('F6')
+        if key == glfw.KEY_F7:
+            self.filter_mode = next(self.filter)
+            self.texture = Texture(self.tex_file, self.wrap_mode, *self.filter_mode)
+            print('F7')
+
+    def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
+        GL.glUseProgram(self.shader.glid)
+
+        # texture access setups
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture.glid)
+        GL.glUniform1i(self.loc[svl.diffuse_map], 0)
+        super().draw(projection, view, model, primitives)
