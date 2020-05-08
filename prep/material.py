@@ -197,6 +197,7 @@ class FramebufferMesh(Mesh):
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
         GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glDisable(GL.GL_CULL_FACE)
         GL.glClearColor(1, 1, 1, 1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
 

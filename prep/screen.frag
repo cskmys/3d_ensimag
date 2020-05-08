@@ -7,8 +7,9 @@ uniform sampler2D screenTexture;
 uniform float exposure;
 
 void main(){
-//    vec3 col = texture( screenTexture, TexCoords + 0.005*vec2( sin(time+1024.0*TexCoords.x),cos(time+768.0*TexCoords.y)) ).xyz ;
-        vec3 col = texture( screenTexture, TexCoords + 0.005*vec2( sin(exposure+1*TexCoords.x),cos(exposure+0.75*TexCoords.y)) ).xyz ;
+        // water floating effect
+//        vec3 col = texture( screenTexture, TexCoords + 0.005*vec2( sin(exposure+1*TexCoords.x),cos(exposure+0.75*TexCoords.y)) ).xyz ;
+            vec3 col = texture( screenTexture, TexCoords ).xyz ;
     FragColor = vec4(col, 1.0);
 // NORMAL
     //    vec3 col = texture(screenTexture, TexCoords).rgb;

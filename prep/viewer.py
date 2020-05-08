@@ -3,14 +3,13 @@
 import OpenGL.GL as GL  # standard Python OpenGL wrapper
 import glfw  # lean window system wrapper for OpenGL
 import transform as t
-import objects as o
 import sh_var_lst as svl
+import nodes as n
 
 from itertools import cycle
 from model import Node
 from gpu import Shader
 from camera import init_camera  # GLFWTrackball
-from anim import ObjectKeyFrameControlNode
 
 SCR_WIDTH = 1280
 SCR_HEIGHT = 720
@@ -69,6 +68,8 @@ class Viewer(Node):
             # clear draw buffer and depth buffer (<-TP2)
             GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0);
             GL.glEnable(GL.GL_DEPTH_TEST)
+            GL.glEnable(GL.GL_CULL_FACE)  # backface culling enabled (TP2)
+
             GL.glClearColor(0.1, 0.1, 0.1, 1.0)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
@@ -129,36 +130,12 @@ def main():
     world_shader = Shader(svl.world_shader['vs'], svl.world_shader['fs'])
     skybox_shader = Shader(svl.skybox_shader['vs'], svl.skybox_shader['fs'])
     screen_shader = Shader(svl.screen_shader['vs'], svl.screen_shader['fs'])
-    # ['ReefFish12', 'TinyYellowFish', 'YellowTang', 'Barracuda', 'ReefFish17', 'ReefFish14',
-    # 'BlueStarfish', 'BottlenoseDolphin', 'GiantGrouper', 'ClownFish2', 'ReefFish16', 'ReefFish8',
-    # 'NurseShark', 'ReefFish20', 'SeaHorse', 'LionFish', 'WhaleShark', 'ReefFish7', 'ReefFish3',
-    # 'BlueTang', 'ReefFish5', 'ReefFish0', 'ReefFish4', 'SeaSnake']
-    skybox_shape = Node()
-    skybox_shape.add(o.Skybox(skybox_shader))
 
-    reef_fish_shape = Node(transform=t.translate(0.0, 0.0, 0.0) @ t.scale(0.5))
-    reef_fish_shape.add(o.Fish(world_shader, 'ReefFish5'))
-    translate_keys = {0: t.vec(0, 0, 0)}
-    rotate_keys = {0: t.quaternion(),
-                   2: t.quaternion_from_euler(180, 0, 0),
-                   4: t.quaternion_from_euler(360, 0, 0)}
-    scale_keys = {0: 1}
-    reef_keynode = ObjectKeyFrameControlNode(translate_keys, rotate_keys, scale_keys)
-    reef_keynode.add(reef_fish_shape)
+    screen_shape = n.get_scr_node(screen_shader, SCR_WIDTH, SCR_HEIGHT)
 
-    bluetang_fish_shape = Node(transform=t.translate(0.5, 0.0, 0.0) @ t.scale(0.5))
-    reef_fish_shape.add(o.Fish(world_shader, 'bluetang'))
+    skybox_shape = n.get_skybox_node(skybox_shader)
 
-    world_shape = Node()
-    world_shape.add(bluetang_fish_shape, reef_keynode)
-
-    # floor_shape = Node(transform=t.rotate((1, 0, 0), 90))
-    # # floor_shape.add(o.Floor(world_shader))
-    # floor_transform = Node()
-    # floor_transform.add(floor_shape, keynode)
-
-    screen_shape = Node()
-    screen_shape.add(o.Framebuffer(screen_shader, SCR_WIDTH, SCR_HEIGHT))
+    world_shape = n.get_world_node(world_shader)
 
     # FOLLOW THIS ORDER STRICTLY IF YOU WANT EVERYTHING TO WORK
     viewer.add(screen_shape, skybox_shape, world_shape)

@@ -1,0 +1,8 @@
+Boids:
+https://github.com/AndrewHallam/Numpy-Boids
+https://github.com/magnord/boids/blob/master/boids.py
+https://alan-turing-institute.github.io/rsd-engineeringcourse/ch01data/084Boids.html
+God rays:
+https://www.google.com/search?client=ubuntu&channel=fs&q=opengl+god+rays&ie=utf-8&oe=utf-8
+https://www.ventuz.com/support/help/V4_05/HowTo/HowToCreateGodRayShader.html
+http://fabiensanglard.net/lightScattering/
