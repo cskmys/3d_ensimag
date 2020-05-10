@@ -66,9 +66,10 @@ class Viewer(Node):
             self.delta_time = current_frame - self.last_frame
             self.last_frame = current_frame - self.last_frame
             # clear draw buffer and depth buffer (<-TP2)
-            GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0);
+            GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
             GL.glEnable(GL.GL_DEPTH_TEST)
             GL.glEnable(GL.GL_CULL_FACE)  # backface culling enabled (TP2)
+            GL.glDepthMask(GL.GL_TRUE)
 
             GL.glClearColor(0.1, 0.1, 0.1, 1.0)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
@@ -139,6 +140,7 @@ def main():
 
     # FOLLOW THIS ORDER STRICTLY IF YOU WANT EVERYTHING TO WORK
     viewer.add(screen_shape, skybox_shape, world_shape)
+    # viewer.add(world_shape)
     viewer.run()
 
 

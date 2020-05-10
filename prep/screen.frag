@@ -11,24 +11,25 @@ void main(){
 //        vec3 col = texture( screenTexture, TexCoords + 0.005*vec2( sin(exposure+1*TexCoords.x),cos(exposure+0.75*TexCoords.y)) ).xyz ;
             vec3 col = texture( screenTexture, TexCoords ).xyz ;
     FragColor = vec4(col, 1.0);
-// NORMAL
-    //    vec3 col = texture(screenTexture, TexCoords).rgb;
+
+//    // NORMAL
+//        vec3 col = texture(screenTexture, TexCoords).rgb;
 //    FragColor = vec4(col * exposure, 1.0);
-    // INVERTED
-    //    FragColor = vec4(vec3(1.0 - texture(screenTexture, TexCoords)), 1.0);
-    // BW
+////     INVERTED
+//        FragColor = vec4(vec3(1.0 - texture(screenTexture, TexCoords)), 1.0);
+////     BW
 //    FragColor = texture(screenTexture, TexCoords);
 //    float average = 0.2126 * FragColor.r + 0.7152 * FragColor.g + 0.0722 * FragColor.b;
 //    FragColor = vec4(average, average, average, 1.0);
 
-// sharpen kernel
+//// sharpen kernel
 //        float kernel[9] = float[](
 //        -1, -1, -1,
 //        -1,  9, -1,
 //        -1, -1, -1
 //    );
-
-    // kernel based
+//
+////     kernel based
 //    const float offset = 1.0 / 300.0;
 //    vec2 offsets[9] = vec2[](
 //        vec2(-offset,  offset), // top-left

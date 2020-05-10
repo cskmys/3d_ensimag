@@ -27,6 +27,12 @@ class Fish(Node):
         raise Exception('Fish ' + name + ' not found')
 
 
+class Axis(Node):
+    def __init__(self, shader):
+        super().__init__()
+        self.add(ld.load_axis(shader))
+
+
 class Skybox(Node):
     def __init__(self, shader):
         super().__init__()

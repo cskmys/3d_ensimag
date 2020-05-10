@@ -3,7 +3,7 @@
 import assimpcy  # 3D resource loader
 import os  # os function, i.e. checking file status
 
-from material import Texture, TexturedPhongMesh, CubeMap, CubeMapMesh, FrameTexture, FramebufferMesh, TexturedPlaneMesh
+from material import Texture, TexturedPhongMesh, CubeMap, CubeMapMesh, FrameTexture, FramebufferMesh, TexturedPlaneMesh, AxisMesh
 
 
 def load_model(file, shader, light_dir, tex_file=None):
@@ -105,4 +105,9 @@ def load_floor(file, shader, tex_file=None):
 
     size = sum((mesh.mNumFaces for mesh in scene.mMeshes))
     print('Loaded %s\t(textured plane %d faces)' % (file, size))
+    return mesh
+
+
+def load_axis(shader):
+    mesh = AxisMesh(shader)
     return mesh

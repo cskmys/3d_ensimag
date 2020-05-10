@@ -196,11 +196,12 @@ class FramebufferMesh(Mesh):
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
-        GL.glDisable(GL.GL_DEPTH_TEST)
-        GL.glDisable(GL.GL_CULL_FACE)
+        # GL.glDisable(GL.GL_DEPTH_TEST)
+        # GL.glDisable(GL.GL_CULL_FACE)
+        GL.glDepthMask(GL.GL_FALSE);
         GL.glClearColor(1, 1, 1, 1)
+        # GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
-
         GL.glUseProgram(self.shader.glid)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.frame_tex.tcid)
         GL.glUniform1i(self.loc[svl.screen_texture], 0)
@@ -258,4 +259,17 @@ class TexturedPlaneMesh(Mesh):
         GL.glActiveTexture(GL.GL_TEXTURE0)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture.glid)
         GL.glUniform1i(self.loc[svl.diffuse_map], 0)
+        super().draw(projection, view, model, primitives)
+
+
+class AxisMesh(Mesh):
+    """ Axis object useful for debugging coordinate frames """
+
+    def __init__(self, shader):
+        pos = ((0, 0, 0), (1, 0, 0), (0, 0, 0), (0, 1, 0), (0, 0, 0), (0, 0, 1))
+        col = ((1, 0, 0), (1, 0, 0), (0, 1, 0), (0, 1, 0), (0, 0, 1), (0, 0, 1))
+        super().__init__(shader, [pos, col])
+
+    def draw(self, projection, view, model, primitives=GL.GL_LINES):
+        model = t.scale(5)
         super().draw(projection, view, model, primitives)
