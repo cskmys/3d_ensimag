@@ -56,7 +56,8 @@ class ObjectKeyFrameControlNode(Node):
 
     def draw(self, projection, view, model):
         """ When redraw requested, interpolate our node transform from keys """
-        self.transform = self.keyframes.value(glfw.get_time())  # transform belongs to parent class i,e, Node
+        tim = glfw.get_time()
+        self.transform = self.keyframes.value(tim)  # transform belongs to parent class i,e, Node
         super().draw(projection, view, model)
 
     def key_handler(self, key):
