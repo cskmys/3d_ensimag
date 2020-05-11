@@ -12,7 +12,12 @@
 No extra packages/libraries required other than the ones we used for lab
 
 == Instructions
-Execute viewer.py
+* Make sure you are current working directory is in the same folder as this readme
+* Execute:
++
+----
+python3 ./viewer.py
+----
 
 == Controls
 * Hover Mouse: Look Around
