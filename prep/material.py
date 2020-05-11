@@ -29,8 +29,6 @@ class Texture:
             GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, min_filter)
             GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, mag_filter)
             GL.glGenerateMipmap(GL.GL_TEXTURE_2D)
-            message = 'Loaded texture %s\t(%s, %s, %s, %s)'
-            print(message % (tex_file, tex.shape, wrap_mode, min_filter, mag_filter))
         except FileNotFoundError:
             print("ERROR: unable to load texture file %s" % tex_file)
 
@@ -50,8 +48,6 @@ class CubeMap:
                 tex = np.asarray(Image.open(tex_file).convert('RGBA'))
                 GL.glTexImage2D(GL.GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL.GL_RGBA, tex.shape[1], tex.shape[0], 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, tex)
 
-                message = 'Loaded cubemap %s\t(%s, %s, %s, %s)'
-                print(message % (tex_file, tex.shape, wrap_mode, min_filter, mag_filter))
             except FileNotFoundError:
                 print("ERROR: unable to load texture file %s" % tex_file)
 
@@ -66,7 +62,7 @@ class CubeMap:
 
 
 class FrameTexture:
-    def __init__(self, width, height, wrap_mode=GL.GL_CLAMP_TO_EDGE, min_filter=GL.GL_LINEAR, mag_filter=GL.GL_LINEAR):
+    def __init__(self, width, height, min_filter=GL.GL_LINEAR, mag_filter=GL.GL_LINEAR):
 
         self.fbid = GL.glGenFramebuffers(1)
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fbid)
@@ -78,8 +74,7 @@ class FrameTexture:
         GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, width, height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, None)  # ctypes.c_void_p(0))
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, mag_filter)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, min_filter)
-        # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, wrap_mode)
-        # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, wrap_mode)
+
         GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_2D, self.tcid, 0)
 
         self.rbid = GL.glGenRenderbuffers(1)
@@ -125,8 +120,7 @@ class CubeMapMesh(Mesh):
         cmap_view = np.pad(cmap_view, [(0, 1), (0, 1)], mode='constant')
         cmap_view[3][3] = 1
         super().draw(projection, cmap_view, t.identity(), primitives)
-        GL.glDepthFunc(GL.GL_LESS);
-        # GL.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, 0)
+        GL.glDepthFunc(GL.GL_LESS)
         GL.glUseProgram(0)
 
 
@@ -212,28 +206,44 @@ class FramebufferMesh(Mesh):
         tex = ((0.0, 1.0), (0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0))
         super().__init__(shader, [pos, tex])
 
-        names = [svl.screen_texture, svl.exposure]
+        names = [svl.screen_texture, svl.exposure, svl.effect, svl.tim_f]
         loc = {n: GL.glGetUniformLocation(self.shader.glid, n) for n in names}
         self.loc.update(loc)
         self.frame_tex = frame_tex
         self.exposure = exposure
+        self.effect = 6
+        self.tim_f = 0
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
-        # GL.glDisable(GL.GL_DEPTH_TEST)
-        # GL.glDisable(GL.GL_CULL_FACE)
         GL.glDepthMask(GL.GL_FALSE);
         GL.glClearColor(1, 1, 1, 1)
-        # GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
         GL.glUseProgram(self.shader.glid)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.frame_tex.tcid)
         GL.glUniform1i(self.loc[svl.screen_texture], 0)
-        self.exposure = glfw.get_time()*2.5
+
+        self.tim_f = glfw.get_time() * 2.5
+        GL.glUniform1f(self.loc[svl.tim_f], self.tim_f)
         GL.glUniform1f(self.loc[svl.exposure], self.exposure)
+        GL.glUniform1i(self.loc[svl.effect], self.effect)
+
         super().draw(t.identity(), t.identity(), t.identity())
         GL.glUseProgram(0)
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.frame_tex.fbid)
+
+    def key_handler(self, key):
+        # some interactive elements
+        if key == glfw.KEY_F6:
+            self.exposure = self.exposure + 0.1
+            if self.exposure > 1.0:
+                self.exposure = 1.0
+        if key == glfw.KEY_F7:
+            self.exposure = self.exposure - 0.1
+            if self.exposure < 0.0:
+                self.exposure = 0.0
+        if key == glfw.KEY_E:
+            self.effect = (self.effect + 1) % svl.nb_effect
 
 
 # -------------- Example texture plane class ----------------------------------
@@ -270,11 +280,9 @@ class TexturedPlaneMesh(Mesh):
         if key == glfw.KEY_F6:
             self.wrap_mode = next(self.wrap)
             self.texture = Texture(self.tex_file, self.wrap_mode, *self.filter_mode)
-            print('F6')
         if key == glfw.KEY_F7:
             self.filter_mode = next(self.filter)
             self.texture = Texture(self.tex_file, self.wrap_mode, *self.filter_mode)
-            print('F7')
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
         GL.glUseProgram(self.shader.glid)

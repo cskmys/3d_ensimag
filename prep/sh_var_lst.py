@@ -7,6 +7,9 @@ screen_shader = {'vs': 'screen.vert', 'fs': 'screen.frag'}
 
 screen_texture = 'screenTexture'
 exposure = 'exposure'
+effect = 'effect'
+tim_f = 'tim_f'
+nb_effect = 7
 
 model = 'mvp.model'
 view = 'mvp.view'
@@ -21,17 +24,6 @@ light_dir = 'dlamp.light_dir'
 d_k_a = 'dlamp.k_a'
 d_k_d = 'dlamp.k_d'
 d_k_s = 'dlamp.k_s'
-
-
-"""
-    cubeShader.setVec3("pLamp[3].position", plampPos[3]);
-    cubeShader.setFloat("pLamp[3].constant",  1.0f);
-    cubeShader.setFloat("pLamp[3].linear",    0.09f);
-    cubeShader.setFloat("pLamp[3].quadratic", 0.032f);
-    cubeShader.setVec3("pLamp[3].ambient", lampAmbientColor);
-    cubeShader.setVec3("pLamp[3].diffuse", lampDiffuseColor);
-    cubeShader.setVec3("pLamp[3].specular", lampSpecIntensity);
-"""
 
 p = 'plamp'
 p_nb = 4

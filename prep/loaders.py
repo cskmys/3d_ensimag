@@ -45,7 +45,6 @@ def load_model(file, shader, dlight_dir, tex_file=None):
         meshes.append(mesh)
 
     size = sum((mesh.mNumFaces for mesh in scene.mMeshes))
-    print('Loaded %s\t(%d meshes, %d faces)' % (file, len(meshes), size))
     return meshes
 
 
@@ -71,7 +70,6 @@ def load_cubemap(files, shader):
 
     c_map = CubeMap(cmap_textures)
     mesh = CubeMapMesh(shader, c_map)
-    print('Loaded Skybox')
     return mesh
 
 
@@ -105,7 +103,6 @@ def load_floor(file, shader, tex_file=None):
     mesh = TexturedPlaneMesh(shader, tex_file)
 
     size = sum((mesh.mNumFaces for mesh in scene.mMeshes))
-    print('Loaded %s\t(textured plane %d faces)' % (file, size))
     return mesh
 
 
