@@ -11,6 +11,9 @@
 == Prequisites
 No extra packages/libraries required other than the ones we used for lab
 
+== Instructions
+Execute viewer.py
+
 == Controls
 * Hover Mouse: Look Around
 * Scroll Wheel: Zoom In/Out
@@ -71,6 +74,10 @@ For ex:
 * Interaction between fishes and environment
 * Caustics etc...
 
+== Presentation
+
+Presentation.pdf/pptx in the same folder as this README
+
 == Screenshots
 
 === Pictures
@@ -99,5 +106,5 @@ image::./scrshots/Screenshot_20200511_125822.png[]
 
 === Video
 
-Please go to: *./scrshots./Atlantis.mp4*. We have prepared an underwater symphony.
+Please go to: *./scrshots./Atlantis.mp4*. We have prepared an underwater symphony for you.
 

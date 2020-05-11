@@ -234,11 +234,11 @@ class FramebufferMesh(Mesh):
 
     def key_handler(self, key):
         # some interactive elements
-        if key == glfw.KEY_F6:
+        if key == glfw.KEY_F7:
             self.exposure = self.exposure + 0.1
             if self.exposure > 1.0:
                 self.exposure = 1.0
-        if key == glfw.KEY_F7:
+        if key == glfw.KEY_F6:
             self.exposure = self.exposure - 0.1
             if self.exposure < 0.0:
                 self.exposure = 0.0
