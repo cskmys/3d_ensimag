@@ -148,6 +148,9 @@ def print_msg():
             be amazed
 
         if you had enough amazement for one day, press Q/ESCAPE to LEAVE and go back to your world
+        
+        oh we almost forgot: for best results watch while playing the classical piece "Blue Danube".
+        If you don't believe us, check out the video: "Atlantis.mp4" in scrshots folder
         """
     print(msg)
 
