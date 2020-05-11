@@ -91,19 +91,21 @@ class Viewer(Node):
         """ 'Q' or 'Escape' quits """
         if action == glfw.PRESS or action == glfw.REPEAT:
             if key == glfw.KEY_ESCAPE or key == glfw.KEY_Q:
+                print("Au revoir, Don't hesitate to visit Atlantis again")
                 glfw.set_window_should_close(self.win, True)
 
             self.key_handler(key)
-            if key == glfw.KEY_LEFT_ALT:
-                GL.glPolygonMode(GL.GL_FRONT_AND_BACK, next(self.fill_modes))
-            if key == glfw.KEY_W:
-                self.camera.process_keyboard('FORWARD', self.delta_time)
-            if key == glfw.KEY_S:
-                self.camera.process_keyboard('BACKWARD', self.delta_time)
-            if key == glfw.KEY_A:
-                self.camera.process_keyboard('LEFT', self.delta_time)
-            if key == glfw.KEY_D:
-                self.camera.process_keyboard('RIGHT', self.delta_time)
+            # if key == glfw.KEY_LEFT_ALT:
+            #     GL.glPolygonMode(GL.GL_FRONT_AND_BACK, next(self.fill_modes))
+
+            # if key == glfw.KEY_W:
+            #     self.camera.process_keyboard('FORWARD', self.delta_time)
+            # if key == glfw.KEY_S:
+            #     self.camera.process_keyboard('BACKWARD', self.delta_time)
+            # if key == glfw.KEY_A:
+            #     self.camera.process_keyboard('LEFT', self.delta_time)
+            # if key == glfw.KEY_D:
+            #     self.camera.process_keyboard('RIGHT', self.delta_time)
 
     def mouse_callback(self, _win, xpos, ypos):
         """ Rotate on left-click & drag, pan on right-click & drag """
@@ -124,6 +126,32 @@ class Viewer(Node):
         GL.glViewport(0, 0, width, height)
 
 
+def print_msg():
+    msg = """
+        Bonjour! Bienvenue to Atlantis,
+
+        you can LOOK AROUND HOVERing your MOUSE(Don't be shy, look in all directions- even the floor, you may find a star, who knows).
+
+        if you find something interesting you can use your SCROLL WHEEL to ZOOM in/out.
+
+        not only that, you can press F6/F7 to control the time of the day!!!(Yes, monsieur many things are possible in this world, you'll see)
+
+        one last secret: Don't be too lost in admiration. Watch out for the Whaleshark at around 15 seconds. You don't want to be that Lionfish.
+
+        To RESTART the world(yes, unlike your world, it's possible in this world), press SPACE
+
+        one more last secret:
+        disclaimer: If you fall down from your chair in amazement we are not responsible
+
+        while(1): // Um, 8 times should be good as well
+            press E 
+            be amazed
+
+        if you had enough amazement for one day, press Q/ESCAPE to LEAVE and go back to your world
+        """
+    print(msg)
+
+
 # -------------- main program and scene setup --------------------------------
 def main():
     """ create a window, add scene objects, then run rendering loop """
@@ -136,11 +164,14 @@ def main():
 
     skybox_shape = n.get_skybox_node(skybox_shader)
 
+    print('World Loading, Please Wait!!!')
     world_shape = n.get_world_node(world_shader)
 
     # FOLLOW THIS ORDER STRICTLY IF YOU WANT EVERYTHING TO WORK
     viewer.add(screen_shape, skybox_shape, world_shape)
     # viewer.add(world_shape)
+
+    print_msg()
     viewer.run()
 
 
