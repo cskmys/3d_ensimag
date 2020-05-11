@@ -76,3 +76,7 @@ def init_camera(position=t.vec(0.0, 0.0, 0.0), up=t.vec(0.0, 1.0, 0.0), yaw=YAW,
 
 def get_camera_position():
     return camera.Position
+
+
+def get_camera_direction():
+    return camera.Front

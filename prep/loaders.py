@@ -6,7 +6,7 @@ import os  # os function, i.e. checking file status
 from material import Texture, TexturedPhongMesh, CubeMap, CubeMapMesh, FrameTexture, FramebufferMesh, TexturedPlaneMesh, AxisMesh
 
 
-def load_model(file, shader, light_dir, tex_file=None):
+def load_model(file, shader, dlight_dir, tex_file=None):
     """ load resources from file using assimp, return list of Meshes"""
     try:
         pp = assimpcy.aiPostProcessSteps
@@ -35,12 +35,13 @@ def load_model(file, shader, light_dir, tex_file=None):
         mat = scene.mMaterials[mesh.mMaterialIndex].properties
         assert mat['diffuse_map'], "Trying to map using a textureless material"
         attributes = [mesh.mVertices, mesh.mNormals, mesh.mTextureCoords[0]]
-        mesh = TexturedPhongMesh(shader, mat['diffuse_map'], attributes, mesh.mFaces,
-                         k_d=mat.get('COLOR_DIFFUSE', (1, 1, 1)),
-                         k_s=mat.get('COLOR_SPECULAR', (1, 1, 1)),
-                         k_a=mat.get('COLOR_AMBIENT', (0, 0, 0)),
-                         s=mat.get('SHININESS', 16.),
-                         light_dir=light_dir)
+        mesh = TexturedPhongMesh(shader, mat['diffuse_map'], attributes,
+                                 dlight_dir, mesh.mFaces,
+                                 k_d=mat.get('COLOR_DIFFUSE', (1, 1, 1)),
+                                 k_s=mat.get('COLOR_SPECULAR', (1, 1, 1)),
+                                 k_a=mat.get('COLOR_AMBIENT', (0, 0, 0)),
+                                 s=mat.get('SHININESS', 16.),
+                                 )
         meshes.append(mesh)
 
     size = sum((mesh.mNumFaces for mesh in scene.mMeshes))

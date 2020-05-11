@@ -91,7 +91,7 @@ def get_world_node(world_shader):
     clownfish_boid_animnode = ProceduralAnim(fig8_motion)
     clownfish_boid_animnode.add(*clownfish_boid_shape, gaintgrouper_shape)
 
-    reeffish_boid_shape = b.get_boid(world_shader, 'reeffish17', 50, np.array([-20, -5, -2]), np.array([20, 5, 2]),
+    reeffish_boid_shape = b.get_boid(world_shader, 'reeffish14', 50, np.array([-20, -5, -2]), np.array([20, 5, 2]),
                                      rot_axis=(0, 1, 0), rot_angle=90, scale=scale*0.25)
     reeffish_boid_animnode = ProceduralAnim(circ_motion)
     reeffish_boid_animnode.add(*reeffish_boid_shape)
@@ -123,7 +123,7 @@ def get_world_node(world_shader):
     lionfish_animnode = ProceduralAnim(sin_motion)
     lionfish_animnode.add(lionfish_keynode)
 
-    reeffishA_boid_shape = b.get_boid(world_shader, 'reeffish17', 50, np.array([-20, -5, -2]), np.array([20, 5, 2]),
+    reeffishA_boid_shape = b.get_boid(world_shader, 'reeffish7', 50, np.array([-20, -5, -2]), np.array([20, 5, 2]),
                                       rot_axis=(0, 1, 0), rot_angle=90, scale=scale*0.25)
     reeffishA_boid_animnode = ProceduralAnim(circA_motion)
     reeffishA_boid_animnode.add(*reeffishA_boid_shape)

@@ -17,9 +17,37 @@ diffuse_map = 'material.diffuse_map'
 
 skybox = 'skybox'
 
-light_dir = 'lamp.light_dir'
-k_a = 'lamp.k_a'
-k_d = 'lamp.k_d'
-k_s = 'lamp.k_s'
+light_dir = 'dlamp.light_dir'
+d_k_a = 'dlamp.k_a'
+d_k_d = 'dlamp.k_d'
+d_k_s = 'dlamp.k_s'
+
+
+"""
+    cubeShader.setVec3("pLamp[3].position", plampPos[3]);
+    cubeShader.setFloat("pLamp[3].constant",  1.0f);
+    cubeShader.setFloat("pLamp[3].linear",    0.09f);
+    cubeShader.setFloat("pLamp[3].quadratic", 0.032f);
+    cubeShader.setVec3("pLamp[3].ambient", lampAmbientColor);
+    cubeShader.setVec3("pLamp[3].diffuse", lampDiffuseColor);
+    cubeShader.setVec3("pLamp[3].specular", lampSpecIntensity);
+"""
+
+p = 'plamp'
+p_nb = 4
+p_pos = 'position'
+
+p_c = 'constant'
+p_l = 'linear'
+p_q = 'quadratic'
+
+p_k_a = 'k_a'
+p_k_d = 'k_d'
+p_k_s = 'k_s'
+
+
+def get_plamp_i(idx, var):
+    return str('{lamp}[{idx}].{var}').format(lamp=p, idx=idx, var=var)
+
 
 camera_position = 'camera.camera_position'

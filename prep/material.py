@@ -114,7 +114,7 @@ class CubeMapMesh(Mesh):
         self.cubemap = cubemap
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
-        GL.glDepthFunc(GL.GL_LEQUAL);
+        GL.glDepthFunc(GL.GL_LEQUAL)
         GL.glUseProgram(self.shader.glid)
         GL.glUniform1i(self.loc[svl.skybox], 0)
 
@@ -131,12 +131,18 @@ class CubeMapMesh(Mesh):
 
 
 class TexturedPhongMesh(Mesh):
-    def __init__(self, shader, texture, attributes, index=None, 
-                 light_dir=(0, -1, 0),  # directional light (in world coords)
+    def __init__(self, shader, texture, attributes,
+                 light_dir,  # directional light (in world coords)
+                 index=None,
                  k_a=(0, 0, 0), k_d=(1, 1, 0), k_s=(1, 1, 1), s=16.):
         super().__init__(shader, attributes, index)
         self._PhongInit(light_dir, k_a, k_d, k_s, s)
         self._TexturedMeshInit(texture)
+        self.plight_pos = [(0.7, 0.2, 2.0),
+                           (2.3, -3.3, -4.0),
+                           (-4.0, 2.0, -12.0),
+                           (0.0, 0.0, -3.0)]
+        assert len(self.plight_pos) == svl.p_nb, 'Provide position for all point lights'
 
     def draw(self, projection, view, model, primitives=GL.GL_TRIANGLES):
         GL.glUseProgram(self.shader.glid)
@@ -152,18 +158,36 @@ class TexturedPhongMesh(Mesh):
         self.light_dir = light_dir
         self.k_a, self.k_d, self.k_s, self.s = k_a, k_d, k_s, s
 
-        names = [svl.light_dir, svl.k_a, svl.s, svl.k_s, svl.k_d, svl.camera_position]
+        names = [svl.light_dir, svl.d_k_a, svl.s, svl.d_k_s, svl.d_k_d,
+                 svl.camera_position]
+
+        p_names = [svl.p_c, svl.p_l, svl.p_q,
+                   svl.p_k_a, svl.p_k_s, svl.p_k_d,
+                   svl.p_pos]
+        for i in range(svl.p_nb):
+            for name in p_names:
+                names.append(svl.get_plamp_i(i, name))
 
         loc = {n: GL.glGetUniformLocation(self.shader.glid, n) for n in names}
         self.loc.update(loc)
 
     def _PhongDraw(self, camera_pos):
-        # self.light_dir = [np.sin(glfw.get_time() * val) for val in [2.0, 0.7, 1.3]]
+        for i in range(svl.p_nb):
+            GL.glUniform3fv(self.loc[svl.get_plamp_i(i, svl.p_pos)], 1, self.plight_pos[i])
+            GL.glUniform1f(self.loc[svl.get_plamp_i(i, svl.p_c)], 1.0)
+            GL.glUniform1f(self.loc[svl.get_plamp_i(i, svl.p_l)], 0.09)
+            GL.glUniform1f(self.loc[svl.get_plamp_i(i, svl.p_q)], 0.032)
+            GL.glUniform3fv(self.loc[svl.get_plamp_i(i, svl.p_k_a)], 1, self.k_a)
+            GL.glUniform3fv(self.loc[svl.get_plamp_i(i, svl.p_k_d)], 1, self.k_d)
+            GL.glUniform3fv(self.loc[svl.get_plamp_i(i, svl.p_k_s)], 1, self.k_s)
+
+        speed = 0.001
+        self.light_dir = [np.sin(glfw.get_time() * speed * val) for val in [2.0, 0.7, 1.3]]
         GL.glUniform3fv(self.loc[svl.light_dir], 1, self.light_dir)
 
-        GL.glUniform3fv(self.loc[svl.k_a], 1, self.k_a)
-        GL.glUniform3fv(self.loc[svl.k_d], 1, self.k_d)
-        GL.glUniform3fv(self.loc[svl.k_s], 1, self.k_s)
+        GL.glUniform3fv(self.loc[svl.d_k_a], 1, self.k_a)
+        GL.glUniform3fv(self.loc[svl.d_k_d], 1, self.k_d)
+        GL.glUniform3fv(self.loc[svl.d_k_s], 1, self.k_s)
         GL.glUniform1f(self.loc[svl.s], max(self.s, 0.001))
 
         GL.glUniform3fv(self.loc[svl.camera_position], 1, camera_pos)

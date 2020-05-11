@@ -14,7 +14,7 @@ class Suzy(Node):
 
 
 class Fish(Node):
-    def __init__(self, shader, name, light_dir=(0, -1, 0)):
+    def __init__(self, shader, name, dlight_dir=(0, -1, 0)):
         super().__init__()
         for root, dirs, files in os.walk('./Fish'):
             for obj_dir in dirs:
@@ -22,7 +22,7 @@ class Fish(Node):
                     for root, dirs, files in os.walk(os.path.join(root, obj_dir)):
                         for file in files:
                             if str(file).split('.')[1] == 'obj':
-                                self.add(*[mesh for mesh in ld.load_model(os.path.join(root, file), shader, light_dir)])
+                                self.add(*[mesh for mesh in ld.load_model(os.path.join(root, file), shader, dlight_dir)])
                                 return
         raise Exception('Fish ' + name + ' not found')
 
